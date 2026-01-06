@@ -20,7 +20,8 @@ import {
   Palette, Pencil, Trash2, Users, Timer, 
   Gavel, Image as ImageIcon, Award, CheckCircle2,
   TrendingDown, Trophy, Coins, Volume2, VolumeX,
-  PlusCircle, MinusCircle, AlertCircle, History
+  PlusCircle, MinusCircle, AlertCircle, History,
+  PenTool
 } from 'lucide-react';
 
 // --- Configuration ---
@@ -65,7 +66,6 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
   const [timeLeft, setTimeLeft] = useState(timeLimit);
   const contextRef = useRef(null);
 
-  // Initialize Canvas with proper dimensions
   useEffect(() => {
     const initCanvas = () => {
       const canvas = canvasRef.current;
@@ -244,33 +244,25 @@ export default function App() {
     }
   }, [isMuted, room?.phase]);
 
-  // Host Loop
+  // Host Loop logic with race-condition protection
   useEffect(() => {
     if (view !== 'host' || !room) return;
     let timer;
 
-    // Transition from DRAW -> APPRAISE
-    if (room.phase === PHASES.STUDIO_DRAW && players.length > 0 && players.every(p => p.ready)) {
-      startPhase(PHASES.STUDIO_APPRAISE);
+    // Safety: Don't check readiness until phase has been active for at least 3 seconds
+    const phaseUptime = Date.now() - (room.phaseStartedAt || 0);
+    const isSettled = phaseUptime > 3000;
+
+    // Phase transitions
+    if (isSettled && players.length > 0 && players.every(p => p.ready)) {
+      if (room.phase === PHASES.STUDIO_DRAW) startPhase(PHASES.STUDIO_APPRAISE);
+      else if (room.phase === PHASES.STUDIO_APPRAISE) startPhase(PHASES.AUCTION);
+      else if (room.phase === PHASES.CURATION) startPhase(PHASES.PRESENTATION);
+      else if (room.phase === PHASES.VOTING) startPhase(PHASES.RESULTS);
       return;
     }
 
-    // Transition from APPRAISE -> AUCTION
-    if (room.phase === PHASES.STUDIO_APPRAISE && players.length > 0 && players.every(p => p.ready)) {
-      startPhase(PHASES.AUCTION);
-      return;
-    }
-
-    if (room.phase === PHASES.CURATION && players.length > 0 && players.every(p => p.ready)) {
-      startPhase(PHASES.PRESENTATION);
-      return;
-    }
-
-    if (room.phase === PHASES.VOTING && players.length > 0 && players.every(p => p.ready)) {
-      startPhase(PHASES.RESULTS);
-      return;
-    }
-
+    // Presentation logic
     if (room.phase === PHASES.PRESENTATION) {
       timer = setInterval(async () => {
         const currentIdx = room.presentingIdx || 0;
@@ -286,6 +278,7 @@ export default function App() {
       }, 1000);
     }
 
+    // Auction logic
     if (room.phase === PHASES.AUCTION) {
       if (!room.currentAuction) {
         const nextItem = items.find(i => i.appraised && !i.auctioned);
@@ -352,9 +345,15 @@ export default function App() {
   };
 
   const startPhase = async (phase) => {
-    const data = { phase };
-    if (phase === PHASES.PRESENTATION) { data.presentingIdx = 0; data.presentationTimer = 10; }
+    const data = { 
+      phase, 
+      phaseStartedAt: Date.now(),
+      presentingIdx: 0,
+      presentationTimer: 10
+    };
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), data);
+    
+    // Reset player ready states one by one
     for (const p of players) {
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', p.id), { ready: false });
     }
@@ -400,7 +399,7 @@ export default function App() {
     }
     const code = generateRoomCode();
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code), {
-      hostId: user.uid, phase: PHASES.LOBBY, theme: THEMES[Math.floor(Math.random() * THEMES.length)], currentAuction: null
+      hostId: user.uid, phase: PHASES.LOBBY, theme: THEMES[Math.floor(Math.random() * THEMES.length)], currentAuction: null, phaseStartedAt: Date.now()
     });
     setRoomId(code); setView('host');
   };
@@ -432,7 +431,6 @@ export default function App() {
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items', itemId), {
       title, history, appraised: true, appraiserId: user.uid
     });
-    // Find next unappraised item not by this player
     const remaining = items.filter(i => i.artistId !== user.uid && !i.appraised && i.id !== itemId);
     if (remaining.length === 0) {
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true });
@@ -491,7 +489,7 @@ export default function App() {
 
           {(room?.phase === PHASES.STUDIO_DRAW || room?.phase === PHASES.STUDIO_APPRAISE) && (
             <div className="text-center space-y-12 animate-in zoom-in">
-              <Timer size={100} className="mx-auto text-indigo-500 animate-pulse" />
+              {room.phase === PHASES.STUDIO_DRAW ? <PenTool size={100} className="mx-auto text-indigo-500 animate-bounce" /> : <History size={100} className="mx-auto text-orange-500 animate-spin-slow" />}
               <h2 className="text-6xl font-black text-slate-900">
                 {room.phase === PHASES.STUDIO_DRAW ? "Creation Phase" : "Appraisal Phase"}
               </h2>
@@ -509,37 +507,44 @@ export default function App() {
             </div>
           )}
 
-          {room?.phase === PHASES.AUCTION && room.currentAuction && (
-            <div className="w-full max-w-6xl grid grid-cols-2 gap-16 animate-in fade-in slide-in-from-bottom duration-700">
-              <div className="bg-white p-12 rounded-[3rem] shadow-2xl space-y-8 border-4 border-white">
-                <div className="aspect-square bg-slate-50 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center border border-slate-100">
-                  <img src={room.currentAuction.item.image} className="max-h-full max-w-full object-contain" />
-                </div>
-                <div>
-                  <h3 className="text-5xl font-black text-slate-900 leading-tight">{room.currentAuction.item.title || "Untitled Masterpiece"}</h3>
-                  <p className="text-2xl text-slate-500 mt-4 italic font-medium leading-relaxed">"{room.currentAuction.item.history || "A mystery of the modern world."}"</p>
-                </div>
-              </div>
-              <div className="flex flex-col justify-center space-y-10">
-                <div className={`p-16 rounded-[3rem] shadow-2xl text-center space-y-6 ${room.currentAuction.type === 'DUTCH' ? 'bg-orange-600' : 'bg-indigo-900'} text-white relative`}>
-                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-white text-slate-900 px-8 py-2 rounded-full font-black text-sm uppercase shadow-lg">
-                    {room.currentAuction.type} Auction
+          {room?.phase === PHASES.AUCTION && (
+            room.currentAuction ? (
+              <div className="w-full max-w-6xl grid grid-cols-2 gap-16 animate-in fade-in slide-in-from-bottom duration-700">
+                <div className="bg-white p-12 rounded-[3rem] shadow-2xl space-y-8 border-4 border-white">
+                  <div className="aspect-square bg-slate-50 rounded-2xl overflow-hidden shadow-inner flex items-center justify-center border border-slate-100">
+                    <img src={room.currentAuction.item.image} className="max-h-full max-w-full object-contain" />
                   </div>
-                  <p className="text-9xl font-black tracking-tighter font-mono">${room.currentAuction.highestBid}</p>
-                  <p className="text-3xl font-bold opacity-90">{room.currentAuction.highestBidderName || "Waiting for curator..."}</p>
+                  <div>
+                    <h3 className="text-5xl font-black text-slate-900 leading-tight">{room.currentAuction.item.title || "Untitled Masterpiece"}</h3>
+                    <p className="text-2xl text-slate-500 mt-4 italic font-medium leading-relaxed">"{room.currentAuction.item.history || "A mystery of the modern world."}"</p>
+                  </div>
                 </div>
-                <div className="bg-white p-10 rounded-[2.5rem] shadow-xl flex items-center justify-between border-b-8 border-slate-200">
-                   <div className="flex items-center gap-6">
-                     <Timer className={`text-slate-300 ${room.currentAuction.timer < 5 ? 'text-red-500 animate-pulse' : ''}`} size={48} />
-                     <span className="text-5xl font-black font-mono">{room.currentAuction.type === 'DUTCH' ? '-' : (room.currentAuction.timer || 0) + 's'}</span>
-                   </div>
-                   <div className="text-right">
-                     <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Artist</p>
-                     <p className="text-3xl font-black text-slate-800">{room.currentAuction.item.artistName}</p>
-                   </div>
+                <div className="flex flex-col justify-center space-y-10">
+                  <div className={`p-16 rounded-[3rem] shadow-2xl text-center space-y-6 ${room.currentAuction.type === 'DUTCH' ? 'bg-orange-600' : 'bg-indigo-900'} text-white relative`}>
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-white text-slate-900 px-8 py-2 rounded-full font-black text-sm uppercase shadow-lg">
+                      {room.currentAuction.type} Auction
+                    </div>
+                    <p className="text-9xl font-black tracking-tighter font-mono">${room.currentAuction.highestBid}</p>
+                    <p className="text-3xl font-bold opacity-90">{room.currentAuction.highestBidderName || "Waiting for curator..."}</p>
+                  </div>
+                  <div className="bg-white p-10 rounded-[2.5rem] shadow-xl flex items-center justify-between border-b-8 border-slate-200">
+                    <div className="flex items-center gap-6">
+                      <Timer className={`text-slate-300 ${room.currentAuction.timer < 5 ? 'text-red-500 animate-pulse' : ''}`} size={48} />
+                      <span className="text-5xl font-black font-mono">{room.currentAuction.type === 'DUTCH' ? '-' : (room.currentAuction.timer || 0) + 's'}</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Artist</p>
+                      <p className="text-3xl font-black text-slate-800">{room.currentAuction.item.artistName}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="text-center space-y-6">
+                <Gavel size={80} className="mx-auto text-indigo-500 animate-bounce" />
+                <h2 className="text-4xl font-black text-slate-800">Preparing Next Lot...</h2>
+              </div>
+            )
           )}
 
           {room?.phase === PHASES.PRESENTATION && (
@@ -608,7 +613,7 @@ export default function App() {
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 flex flex-col max-w-md mx-auto relative overflow-hidden font-sans">
-      <div className="bg-slate-900 text-white p-4 flex justify-between items-center z-10">
+      <div className="bg-slate-900 text-white p-4 flex justify-between items-center z-10 shadow-md">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-indigo-500 flex items-center justify-center font-black text-xl">
             {name ? name[0] : me?.name ? me.name[0] : '?'}
@@ -625,15 +630,15 @@ export default function App() {
       </div>
 
       <main className="flex-1 overflow-y-auto bg-slate-50 pb-20">
-        {room?.phase === PHASES.LOBBY && (
+        {!room ? (
+          <div className="p-16 text-center text-slate-400 italic">Waiting for connection...</div>
+        ) : room.phase === PHASES.LOBBY ? (
           <div className="p-8 text-center space-y-6 flex flex-col items-center justify-center min-h-[60vh]">
             <Users size={80} className="text-indigo-500 animate-pulse" />
             <h2 className="text-3xl font-black">Waiting for Lobby...</h2>
             <p className="text-slate-500 font-medium">Sit tight! The host will begin the studio shortly.</p>
           </div>
-        )}
-
-        {room?.phase === PHASES.STUDIO_DRAW && (
+        ) : room.phase === PHASES.STUDIO_DRAW ? (
           <>
             {me?.ready ? (
               <div className="p-16 text-center space-y-6 flex flex-col items-center justify-center min-h-[60vh]">
@@ -645,9 +650,7 @@ export default function App() {
               <DrawingCanvas key={currentPromptIdx} prompt={PROMPTS[currentPromptIdx % PROMPTS.length]} timeLimit={90} onSave={handleDrawingSubmit} />
             )}
           </>
-        )}
-
-        {room?.phase === PHASES.STUDIO_APPRAISE && (
+        ) : room.phase === PHASES.STUDIO_APPRAISE ? (
           <div className="p-6 space-y-6 animate-in slide-in-from-bottom">
             {me?.ready ? (
                <div className="p-16 text-center space-y-6 flex flex-col items-center justify-center min-h-[60vh]">
@@ -699,16 +702,14 @@ export default function App() {
                 {items.filter(i => i.artistId !== user?.uid && !i.appraised).length === 0 && (
                   <div className="p-16 text-center space-y-6 flex flex-col items-center justify-center min-h-[60vh]">
                     <CheckCircle2 size={100} className="text-indigo-500 animate-bounce" />
-                    <h3 className="text-3xl font-black text-slate-900">Nothing to appraise!</h3>
-                    <p className="text-slate-500 font-medium italic">Wait for the auction to open.</p>
+                    <h3 className="text-3xl font-black text-slate-900">Wait for items...</h3>
+                    <p className="text-slate-500 font-medium italic">Others are still painting!</p>
                   </div>
                 )}
               </>
             )}
           </div>
-        )}
-
-        {room?.phase === PHASES.AUCTION && room.currentAuction && (
+        ) : room.phase === PHASES.AUCTION && room.currentAuction ? (
           <div className="p-6 space-y-8 min-h-[80vh] flex flex-col justify-center animate-in fade-in">
             <div className="text-center space-y-2">
               <h3 className="text-3xl font-black text-slate-900 leading-tight">Lot: {room.currentAuction.item.title || "Unknown Art"}</h3>
@@ -747,9 +748,7 @@ export default function App() {
               </button>
             </div>
           </div>
-        )}
-
-        {room?.phase === PHASES.CURATION && (
+        ) : room.phase === PHASES.CURATION ? (
           <div className="p-8 space-y-8 animate-in slide-in-from-right">
             <div className="bg-indigo-600 text-white p-8 rounded-[2rem] space-y-2 shadow-2xl">
               <p className="text-xs font-black uppercase tracking-widest opacity-70">Exhibition Theme</p>
@@ -784,9 +783,7 @@ export default function App() {
               }} className="w-full py-6 bg-indigo-600 text-white rounded-3xl font-black text-2xl shadow-xl">OPEN MY WING</button>
             </div>
           </div>
-        )}
-
-        {room?.phase === PHASES.VOTING && !me?.ready && (
+        ) : room.phase === PHASES.VOTING && !me?.ready ? (
           <div className="p-8 space-y-8 animate-in slide-in-from-bottom">
             <h2 className="text-3xl font-black text-center text-slate-900 leading-tight">Cast Your Vote for Lead Curator</h2>
             <div className="space-y-4">
@@ -803,9 +800,7 @@ export default function App() {
               ))}
             </div>
           </div>
-        )}
-
-        {(me?.ready || (room?.phase === PHASES.PRESENTATION) || (room?.phase === PHASES.RESULTS)) && (
+        ) : (
           <div className="p-16 text-center space-y-6 flex flex-col items-center justify-center min-h-[60vh]">
             <CheckCircle2 size={100} className="text-indigo-500 animate-bounce" />
             <h3 className="text-3xl font-black text-slate-900">Finished!</h3>
