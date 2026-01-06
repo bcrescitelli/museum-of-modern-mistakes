@@ -445,7 +445,7 @@ export default function App() {
                       <span className="text-8xl font-black font-mono">{(room.currentAuction.timer || 0)}s</span>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] mb-2">Curated By</p>
+                      <p className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] mb-2">Original Artist</p>
                       <p className="text-5xl font-black text-slate-800">{room.currentAuction.item.artistName}</p>
                     </div>
                   </div>
@@ -460,23 +460,30 @@ export default function App() {
           )}
 
           {room?.phase === PHASES.PRESENTATION && (
-            <div className="w-full max-w-[95vw] flex flex-col items-center justify-center animate-in zoom-in duration-700">
+            <div className="w-full h-full max-h-[85vh] max-w-[98vw] flex flex-col items-center justify-center animate-in zoom-in duration-700 px-4">
               {players[room.presentingIdx] && (
                 <>
-                  <div className="text-center mb-10 space-y-3">
-                    <div className="inline-block px-12 py-2 bg-indigo-600 text-white rounded-full font-black text-lg uppercase tracking-widest shadow-xl">Grand Theme: {room.theme}</div>
-                    <p className="text-slate-400 font-black text-4xl uppercase tracking-[0.25em]">{players[room.presentingIdx].name}'s Wing</p>
-                    <h2 className="text-[10rem] font-black text-slate-900 drop-shadow-2xl leading-none italic">"{players[room.presentingIdx].wingTitle}"</h2>
+                  {/* Compact Header */}
+                  <div className="text-center mb-6 space-y-1">
+                    <div className="inline-block px-6 py-1 bg-indigo-600 text-white rounded-full font-black text-xs uppercase tracking-widest shadow-lg mb-1">Theme: {room.theme}</div>
+                    <p className="text-slate-400 font-black text-lg uppercase tracking-[0.2em] leading-none mb-1">{players[room.presentingIdx].name}'s Gallery</p>
+                    <h2 className="text-5xl font-black text-slate-900 leading-tight italic">"{players[room.presentingIdx].wingTitle}"</h2>
                   </div>
-                  <div className="flex w-full gap-8 justify-center px-10">
+                  
+                  {/* Single Row Gallery */}
+                  <div className="flex w-full gap-4 justify-center items-start overflow-hidden">
                     {items.filter(i => (players[room.presentingIdx].inventory || []).includes(i.id)).map(item => (
-                      <div key={item.id} className="flex-1 max-w-[30%] bg-white p-8 rounded-[4rem] shadow-2xl relative border-4 border-white transform transition-transform hover:-translate-y-4">
+                      <div key={item.id} className="flex-1 max-w-[31%] bg-white p-4 rounded-[2rem] shadow-xl relative border-2 border-white transform transition-transform hover:scale-[1.02]">
                         {item.returned && (
-                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 bg-red-600 text-white px-10 py-5 rounded-xl font-black text-6xl border-8 border-white shadow-2xl z-20">MISTAKE!</div>
+                          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 bg-red-600 text-white px-6 py-2 rounded-lg font-black text-3xl border-4 border-white shadow-2xl z-20">MISTAKE!</div>
                         )}
-                        <img src={item.image} className="w-full aspect-square object-contain mb-8 bg-slate-50 rounded-3xl p-4 shadow-inner" />
-                        <h4 className="text-4xl font-black text-slate-800 leading-tight h-24 overflow-hidden mb-2">{item.title}</h4>
-                        <p className="text-xl text-slate-500 italic font-bold leading-snug border-t pt-4 border-slate-100">"{item.history}"</p>
+                        <div className="bg-slate-50 rounded-2xl p-2 mb-3 shadow-inner">
+                          <img src={item.image} className="w-full h-40 object-contain mx-auto" />
+                        </div>
+                        <div className="px-1">
+                          <h4 className="text-xl font-black text-slate-800 leading-tight mb-1 truncate">{item.title}</h4>
+                          <p className="text-sm text-slate-500 italic font-bold leading-tight border-t pt-2 border-slate-100 line-clamp-3">"{item.history}"</p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -495,7 +502,7 @@ export default function App() {
                   const itemsOwned = items.filter(i => (p.inventory || []).includes(i.id));
                   const mistakePenalty = items.filter(i => i.returned && i.artistId === p.id).length * 100;
                   let objBonus = 0;
-                  if (p.objective?.id === 'HOARDER' && p.inventory?.length >= 3) objBonus = 400;
+                  if (p.objective?.id === 'HOARDER' && (p.inventory?.length || 0) >= 3) objBonus = 400;
                   if (p.objective?.id === 'BARGAIN' && itemsOwned.some(i => i.pricePaid < 100)) objBonus = 300;
                   if (p.objective?.id === 'PRODUCER' && items.some(i => i.artistId === p.id && i.ownerId && i.ownerId !== p.id)) objBonus = 300;
                   if (p.objective?.id === 'FAN_FAVE' && p.votes >= 2) objBonus = 500;
@@ -507,7 +514,7 @@ export default function App() {
                 const mistakePenalty = items.filter(i => i.returned && i.artistId === p.id).length * 100;
                 let objBonus = 0;
                 const itemsOwned = items.filter(i => (p.inventory || []).includes(i.id));
-                if (p.objective?.id === 'HOARDER' && p.inventory?.length >= 3) objBonus = 400;
+                if (p.objective?.id === 'HOARDER' && (p.inventory?.length || 0) >= 3) objBonus = 400;
                 if (p.objective?.id === 'BARGAIN' && itemsOwned.some(i => i.pricePaid < 100)) objBonus = 300;
                 if (p.objective?.id === 'PRODUCER' && items.some(i => i.artistId === p.id && i.ownerId && i.ownerId !== p.id)) objBonus = 300;
                 if (p.objective?.id === 'FAN_FAVE' && p.votes >= 2) objBonus = 500;
@@ -543,7 +550,7 @@ export default function App() {
 
   // --- Mobile Client ---
   const me = players.find(p => p.id === user?.uid);
-  const isPanic = room?.phase === PHASES.AUCTION && room.currentAuction?.timer < 5;
+  const isPanic = room?.phase === PHASES.AUCTION && (room.currentAuction?.timer || 0) < 5;
 
   return (
     <div className={`min-h-[100dvh] flex flex-col max-w-md mx-auto relative overflow-hidden font-sans transition-colors duration-200 ${isPanic ? 'bg-red-500 animate-pulse' : 'bg-slate-50'}`}>
@@ -658,7 +665,8 @@ export default function App() {
                   <button key={amt} disabled={(me?.inventory?.length || 0) >= 3} onClick={() => placeBid((room.currentAuction.highestBid || 0) + amt)} className={`py-6 rounded-3xl font-black text-3xl shadow-xl transition-all border-b-8 active:border-b-0 active:translate-y-2 ${isPanic ? 'bg-white text-red-600 border-slate-200' : 'bg-white text-indigo-600 border-slate-200'}`}>+${amt}</button>
                 ))}
               </div>
-              <button disabled={(me?.inventory?.length || 0) >= 3} onClick={() => placeBid((room.currentAuction.highestBid || 0) + 25)} className={`w-full py-10 rounded-[3rem] font-black text-5xl shadow-2xl active:scale-95 transition-all border-b-[12px] ${isPanic ? 'bg-white text-red-600 border-slate-200 animate-pulse' : 'bg-indigo-600 text-white border-indigo-800'}`}>PLACE BID</button>
+              {/* Refined Bid Button: No random dollar, acts as a "Hammer Bid" (+50) */}
+              <button disabled={(me?.inventory?.length || 0) >= 3} onClick={() => placeBid((room.currentAuction.highestBid || 0) + 50)} className={`w-full py-10 rounded-[3rem] font-black text-5xl shadow-2xl active:scale-95 transition-all border-b-[12px] ${isPanic ? 'bg-white text-red-600 border-slate-200 animate-pulse' : 'bg-indigo-600 text-white border-indigo-800'}`}>PLACE BID</button>
             </div>
           </div>
         ) : room.phase === PHASES.CURATION ? (
