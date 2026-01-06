@@ -20,7 +20,7 @@ import {
   Palette, Pencil, Trash2, Users, Timer, 
   Gavel, Image as ImageIcon, Award, CheckCircle2,
   TrendingDown, Trophy, Coins, Volume2, VolumeX,
-  PlusCircle, MinusCircle, AlertCircle
+  PlusCircle, MinusCircle, AlertCircle, History
 } from 'lucide-react';
 
 // --- Configuration ---
@@ -88,7 +88,6 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
       contextRef.current = context;
     };
 
-    // Wait for a frame to ensure container layout is complete
     const handle = requestAnimationFrame(initCanvas);
     window.addEventListener('resize', initCanvas);
     
@@ -178,7 +177,7 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
       <div className="py-4 px-2 space-y-4">
         <div className="flex justify-between items-center gap-4">
           <div className="flex gap-2 flex-wrap flex-1">
-            {['#000000', '#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ffffff'].map(c => (
+            {['#000000', '#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899', '#78350f', '#64748b', '#ffffff'].map(c => (
               <button
                 key={c}
                 onClick={() => setColor(c)}
@@ -250,6 +249,18 @@ export default function App() {
     if (view !== 'host' || !room) return;
     let timer;
 
+    // Transition from DRAW -> APPRAISE
+    if (room.phase === PHASES.STUDIO_DRAW && players.length > 0 && players.every(p => p.ready)) {
+      startPhase(PHASES.STUDIO_APPRAISE);
+      return;
+    }
+
+    // Transition from APPRAISE -> AUCTION
+    if (room.phase === PHASES.STUDIO_APPRAISE && players.length > 0 && players.every(p => p.ready)) {
+      startPhase(PHASES.AUCTION);
+      return;
+    }
+
     if (room.phase === PHASES.CURATION && players.length > 0 && players.every(p => p.ready)) {
       startPhase(PHASES.PRESENTATION);
       return;
@@ -291,7 +302,7 @@ export default function App() {
               timer: isDutch ? 1000 : 15 
             }
           });
-        } else if (items.length > 0) {
+        } else if (items.length > 0 && items.every(i => i.auctioned)) {
           startPhase(PHASES.CURATION);
         }
       } else {
@@ -417,6 +428,17 @@ export default function App() {
     }
   };
 
+  const submitAppraisal = async (itemId, title, history) => {
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items', itemId), {
+      title, history, appraised: true, appraiserId: user.uid
+    });
+    // Find next unappraised item not by this player
+    const remaining = items.filter(i => i.artistId !== user.uid && !i.appraised && i.id !== itemId);
+    if (remaining.length === 0) {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true });
+    }
+  };
+
   // --- Views ---
 
   if (view === 'landing') {
@@ -467,16 +489,23 @@ export default function App() {
             </div>
           )}
 
-          {room?.phase === PHASES.STUDIO_DRAW && (
+          {(room?.phase === PHASES.STUDIO_DRAW || room?.phase === PHASES.STUDIO_APPRAISE) && (
             <div className="text-center space-y-12 animate-in zoom-in">
               <Timer size={100} className="mx-auto text-indigo-500 animate-pulse" />
-              <h2 className="text-6xl font-black text-slate-900">Creation Phase</h2>
+              <h2 className="text-6xl font-black text-slate-900">
+                {room.phase === PHASES.STUDIO_DRAW ? "Creation Phase" : "Appraisal Phase"}
+              </h2>
+              <p className="text-2xl text-slate-500 font-medium italic">
+                {room.phase === PHASES.STUDIO_DRAW ? "Sketching masterpieces..." : "Assigning titles and histories..."}
+              </p>
               <div className="flex flex-wrap justify-center gap-4">
                 {players.map(p => (
-                   <div key={p.id} className={`w-4 h-4 rounded-full ${p.ready ? 'bg-indigo-600' : 'bg-slate-300'}`} />
+                   <div key={p.id} className="flex flex-col items-center gap-2">
+                     <div className={`w-6 h-6 rounded-full ${p.ready ? 'bg-indigo-600' : 'bg-slate-300'}`} />
+                     <p className="text-xs font-bold text-slate-400 uppercase">{p.name}</p>
+                   </div>
                 ))}
               </div>
-              {players.every(p => p.ready) && <button onClick={() => startPhase(PHASES.AUCTION)} className="px-12 py-5 bg-slate-800 text-white rounded-2xl font-black">Open Auction</button>}
             </div>
           )}
 
@@ -610,12 +639,73 @@ export default function App() {
               <div className="p-16 text-center space-y-6 flex flex-col items-center justify-center min-h-[60vh]">
                 <CheckCircle2 size={100} className="text-indigo-500 animate-bounce" />
                 <h3 className="text-3xl font-black text-slate-900">Masterpieces Sent!</h3>
-                <p className="text-slate-500 font-medium italic">Wait for the other artists to put down their brushes.</p>
+                <p className="text-slate-500 font-medium italic">Wait for the appraisal phase to begin.</p>
               </div>
             ) : (
               <DrawingCanvas key={currentPromptIdx} prompt={PROMPTS[currentPromptIdx % PROMPTS.length]} timeLimit={90} onSave={handleDrawingSubmit} />
             )}
           </>
+        )}
+
+        {room?.phase === PHASES.STUDIO_APPRAISE && (
+          <div className="p-6 space-y-6 animate-in slide-in-from-bottom">
+            {me?.ready ? (
+               <div className="p-16 text-center space-y-6 flex flex-col items-center justify-center min-h-[60vh]">
+                 <CheckCircle2 size={100} className="text-indigo-500 animate-bounce" />
+                 <h3 className="text-3xl font-black text-slate-900">Appraisal Complete!</h3>
+                 <p className="text-slate-500 font-medium italic">Preparing the auction catalog...</p>
+               </div>
+            ) : (
+              <>
+                {items.filter(i => i.artistId !== user?.uid && !i.appraised).slice(0, 1).map(item => (
+                  <div key={item.id} className="space-y-6">
+                    <div className="text-center">
+                      <h2 className="text-2xl font-black text-slate-900">Step 2: Appraisal</h2>
+                      <p className="text-slate-500 font-medium italic">Give this artifact a Name and a History.</p>
+                    </div>
+                    <div className="aspect-square bg-white rounded-3xl border-4 border-slate-200 p-2 shadow-xl">
+                      <img src={item.image} className="w-full h-full object-contain" />
+                    </div>
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Formal Name</label>
+                        <input 
+                          type="text" id="appraisal-title" 
+                          placeholder="e.g. The Gilded Pretzel"
+                          className="w-full p-4 bg-white rounded-2xl border-4 border-slate-200 font-black outline-none focus:border-indigo-500 transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Brief History</label>
+                        <textarea 
+                          id="appraisal-history" 
+                          placeholder="e.g. Once owned by a very salty Queen..."
+                          className="w-full p-4 bg-white rounded-2xl border-4 border-slate-200 font-black outline-none focus:border-indigo-500 transition-colors h-24"
+                        />
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const t = document.getElementById('appraisal-title').value;
+                          const h = document.getElementById('appraisal-history').value;
+                          if (t && h) submitAppraisal(item.id, t, h);
+                        }}
+                        className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black text-xl shadow-xl active:scale-95 transition-all"
+                      >
+                        SUBMIT APPRAISAL
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {items.filter(i => i.artistId !== user?.uid && !i.appraised).length === 0 && (
+                  <div className="p-16 text-center space-y-6 flex flex-col items-center justify-center min-h-[60vh]">
+                    <CheckCircle2 size={100} className="text-indigo-500 animate-bounce" />
+                    <h3 className="text-3xl font-black text-slate-900">Nothing to appraise!</h3>
+                    <p className="text-slate-500 font-medium italic">Wait for the auction to open.</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         )}
 
         {room?.phase === PHASES.AUCTION && room.currentAuction && (
