@@ -44,7 +44,7 @@ const PHASES = {
   STUDIO_APPRAISE: 'STUDIO_APPRAISE',
   AUCTION: 'AUCTION',
   CURATION: 'CURATION',
-  PRESENTATION: 'PRESENTATION', // New Phase: Host shows wings 1-by-1
+  PRESENTATION: 'PRESENTATION', 
   VOTING: 'VOTING',
   RESULTS: 'RESULTS'
 };
@@ -103,6 +103,7 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
   }, []);
 
   const handleSave = () => {
+    if (!canvasRef.current) return;
     const dataUrl = canvasRef.current.toDataURL('image/png', 0.5);
     onSave(dataUrl);
   };
@@ -190,6 +191,7 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [roomId, setRoomId] = useState('');
   const [name, setName] = useState('');
+  const [statusMsg, setStatusMsg] = useState('');
   const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef(null);
 
@@ -213,22 +215,29 @@ export default function App() {
   }, [roomId, user]);
 
   useEffect(() => {
-    if (view === 'host' && !audioRef.current) {
-      audioRef.current = new Audio('/intro.mp3');
-      audioRef.current.loop = true;
-      audioRef.current.volume = 0.3;
-      audioRef.current.play().catch(() => {});
+    if (audioRef.current) {
+      audioRef.current.muted = isMuted;
     }
-    if (audioRef.current) audioRef.current.muted = isMuted;
-    return () => { if (view !== 'host' && audioRef.current) { audioRef.current.pause(); audioRef.current = null; } };
-  }, [view, isMuted]);
+    if (room?.phase === PHASES.RESULTS && audioRef.current) {
+      audioRef.current.pause();
+    }
+  }, [isMuted, room?.phase]);
 
-  // --- Host Logic: Timer & Auction Manager ---
+  // Host Loop
   useEffect(() => {
     if (view !== 'host' || !room) return;
     let timer;
 
-    // Handle Presentation Phase auto-advance
+    if (room.phase === PHASES.CURATION && players.length > 0 && players.every(p => p.ready)) {
+      startPhase(PHASES.PRESENTATION);
+      return;
+    }
+
+    if (room.phase === PHASES.VOTING && players.length > 0 && players.every(p => p.ready)) {
+      startPhase(PHASES.RESULTS);
+      return;
+    }
+
     if (room.phase === PHASES.PRESENTATION) {
       timer = setInterval(async () => {
         const currentIdx = room.presentingIdx || 0;
@@ -236,7 +245,7 @@ export default function App() {
           updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentationTimer: room.presentationTimer - 1 });
         } else {
           if (currentIdx < players.length - 1) {
-            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentingIdx: currentIdx + 1, presentationTimer: 8 });
+            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentingIdx: currentIdx + 1, presentationTimer: 10 });
           } else {
             startPhase(PHASES.VOTING);
           }
@@ -244,7 +253,6 @@ export default function App() {
       }, 1000);
     }
 
-    // Handle Auction Logic
     if (room.phase === PHASES.AUCTION) {
       if (!room.currentAuction) {
         const nextItem = items.find(i => i.appraised && !i.auctioned);
@@ -258,7 +266,7 @@ export default function App() {
               highestBid: isDutch ? 1000 : 0,
               highestBidder: null,
               highestBidderName: null,
-              timer: isDutch ? 1000 : 15 // Standard starts with 15s
+              timer: isDutch ? 1000 : 15 
             }
           });
         } else if (items.length > 0) {
@@ -289,9 +297,10 @@ export default function App() {
     }
 
     return () => clearInterval(timer);
-  }, [view, room?.phase, room?.currentAuction, room?.presentingIdx, room?.presentationTimer, items]);
+  }, [view, room?.phase, room?.currentAuction, room?.presentingIdx, room?.presentationTimer, players, items]);
 
   const finalizeAuction = async () => {
+    if (!room?.currentAuction) return;
     const auction = room.currentAuction;
     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
     const itemRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items', auction.itemId);
@@ -302,7 +311,6 @@ export default function App() {
       const pSnap = await getDoc(pRef);
       await updateDoc(pRef, { cash: (pSnap.data().cash || 0) - auction.highestBid, inventory: arrayUnion(auction.itemId) });
     } else {
-      // Returned to Sender
       await updateDoc(itemRef, { ownerId: auction.item.artistId, pricePaid: 0, returned: true, auctioned: true });
       const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', auction.item.artistId);
       await updateDoc(pRef, { inventory: arrayUnion(auction.itemId) });
@@ -312,7 +320,7 @@ export default function App() {
 
   const startPhase = async (phase) => {
     const data = { phase };
-    if (phase === PHASES.PRESENTATION) { data.presentingIdx = 0; data.presentationTimer = 8; }
+    if (phase === PHASES.PRESENTATION) { data.presentingIdx = 0; data.presentationTimer = 10; }
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), data);
     for (const p of players) {
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', p.id), { ready: false });
@@ -320,7 +328,8 @@ export default function App() {
   };
 
   const placeBid = async (amount) => {
-    if (!room?.currentAuction || me.inventory.length >= 3) return;
+    const me = players.find(p => p.id === user?.uid);
+    if (!room?.currentAuction || !me || (me.inventory?.length || 0) >= 3) return;
     const auction = room.currentAuction;
     if (amount > me.cash) return;
 
@@ -333,7 +342,7 @@ export default function App() {
         transaction.update(roomRef, {
           'currentAuction.highestBidder': user.uid,
           'currentAuction.highestBidderName': name,
-          'currentAuction.timer': 0, // Dutch ends immediately on click
+          'currentAuction.timer': 0, 
           'currentAuction.highestBid': current.highestBid
         });
       } else {
@@ -342,13 +351,20 @@ export default function App() {
           'currentAuction.highestBid': amount,
           'currentAuction.highestBidder': user.uid,
           'currentAuction.highestBidderName': name,
-          'currentAuction.timer': 7 // Reset to 7 seconds on every bid
+          'currentAuction.timer': 7 
         });
       }
     });
   };
 
   const hostGame = async () => {
+    if (!audioRef.current) {
+      const audio = new Audio('/intro.mp3');
+      audio.loop = true;
+      audio.volume = 0.3;
+      audio.play().catch(() => {});
+      audioRef.current = audio;
+    }
     const code = generateRoomCode();
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code), {
       hostId: user.uid, phase: PHASES.LOBBY, theme: THEMES[Math.floor(Math.random() * THEMES.length)], currentAuction: null
@@ -364,7 +380,22 @@ export default function App() {
     setRoomId(code.toUpperCase()); setView('client');
   };
 
-  // --- Render Logic ---
+  const handleDrawingSubmit = async (dataUrl) => {
+    const itemRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items'));
+    await setDoc(itemRef, {
+      id: itemRef.id, artistId: user.uid, artistName: name, image: dataUrl,
+      prompt: PROMPTS[Math.floor(Math.random() * PROMPTS.length)],
+      title: '', history: '', appraised: false, ownerId: null, pricePaid: 0, auctioned: false
+    });
+    
+    if (currentPromptIdx < 2) {
+      setCurrentPromptIdx(prev => prev + 1);
+    } else {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true });
+    }
+  };
+
+  // --- Views ---
 
   if (view === 'landing') {
     return (
@@ -381,6 +412,7 @@ export default function App() {
             <div className="flex items-center gap-4 text-slate-500 py-2"><hr className="flex-1 border-slate-700" /><span>OR</span><hr className="flex-1 border-slate-700" /></div>
             <button onClick={hostGame} className="w-full py-4 bg-slate-700 rounded-2xl font-bold hover:bg-slate-600 transition-all">HOST EXHIBITION</button>
           </div>
+          {statusMsg && <p className="text-red-500 font-bold">{statusMsg}</p>}
         </div>
       </div>
     );
@@ -413,6 +445,19 @@ export default function App() {
             </div>
           )}
 
+          {room?.phase === PHASES.STUDIO_DRAW && (
+            <div className="text-center space-y-12 animate-in zoom-in">
+              <Timer size={100} className="mx-auto text-indigo-500 animate-pulse" />
+              <h2 className="text-6xl font-black text-slate-900">Creation Phase</h2>
+              <div className="flex flex-wrap justify-center gap-4">
+                {players.map(p => (
+                   <div key={p.id} className={`w-4 h-4 rounded-full ${p.ready ? 'bg-indigo-600' : 'bg-slate-300'}`} />
+                ))}
+              </div>
+              {players.every(p => p.ready) && <button onClick={() => startPhase(PHASES.AUCTION)} className="px-12 py-5 bg-slate-800 text-white rounded-2xl font-black">Open Auction</button>}
+            </div>
+          )}
+
           {room?.phase === PHASES.AUCTION && room.currentAuction && (
             <div className="w-full max-w-6xl grid grid-cols-2 gap-16 animate-in fade-in slide-in-from-bottom duration-700">
               <div className="bg-white p-12 rounded-[3rem] shadow-2xl space-y-8 border-4 border-white">
@@ -420,8 +465,8 @@ export default function App() {
                   <img src={room.currentAuction.item.image} className="max-h-full max-w-full object-contain" />
                 </div>
                 <div>
-                  <h3 className="text-5xl font-black text-slate-900 leading-tight">{room.currentAuction.item.title}</h3>
-                  <p className="text-2xl text-slate-500 mt-4 italic font-medium leading-relaxed">"{room.currentAuction.item.history}"</p>
+                  <h3 className="text-5xl font-black text-slate-900 leading-tight">{room.currentAuction.item.title || "Untitled Masterpiece"}</h3>
+                  <p className="text-2xl text-slate-500 mt-4 italic font-medium leading-relaxed">"{room.currentAuction.item.history || "A mystery of the modern world."}"</p>
                 </div>
               </div>
               <div className="flex flex-col justify-center space-y-10">
@@ -430,15 +475,15 @@ export default function App() {
                     {room.currentAuction.type} Auction
                   </div>
                   <p className="text-9xl font-black tracking-tighter font-mono">${room.currentAuction.highestBid}</p>
-                  <p className="text-3xl font-bold opacity-90">{room.currentAuction.highestBidderName || "Waiting for opening bid..."}</p>
+                  <p className="text-3xl font-bold opacity-90">{room.currentAuction.highestBidderName || "Waiting for curator..."}</p>
                 </div>
                 <div className="bg-white p-10 rounded-[2.5rem] shadow-xl flex items-center justify-between border-b-8 border-slate-200">
                    <div className="flex items-center gap-6">
                      <Timer className={`text-slate-300 ${room.currentAuction.timer < 5 ? 'text-red-500 animate-pulse' : ''}`} size={48} />
-                     <span className="text-5xl font-black font-mono">{room.currentAuction.type === 'DUTCH' ? '-' : room.currentAuction.timer + 's'}</span>
+                     <span className="text-5xl font-black font-mono">{room.currentAuction.type === 'DUTCH' ? '-' : (room.currentAuction.timer || 0) + 's'}</span>
                    </div>
                    <div className="text-right">
-                     <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Masterpiece By</p>
+                     <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Artist</p>
                      <p className="text-3xl font-black text-slate-800">{room.currentAuction.item.artistName}</p>
                    </div>
                 </div>
@@ -450,16 +495,16 @@ export default function App() {
             <div className="w-full max-w-5xl space-y-12 text-center animate-in zoom-in duration-500">
               {players[room.presentingIdx] && (
                 <>
-                  <div className="space-y-2">
-                    <p className="text-indigo-600 font-black text-xl uppercase tracking-[0.2em]">{players[room.presentingIdx].name} Presents:</p>
-                    <h2 className="text-7xl font-black text-slate-900">"{players[room.presentingIdx].wingTitle}"</h2>
+                  <div className="space-y-4">
+                    <p className="text-indigo-600 font-black text-2xl uppercase tracking-[0.2em]">{players[room.presentingIdx].name} Presents:</p>
+                    <h2 className="text-8xl font-black text-slate-900">"{players[room.presentingIdx].wingTitle}"</h2>
                   </div>
                   <div className="grid grid-cols-2 gap-10">
                     {items.filter(i => players[room.presentingIdx].finalInventory?.includes(i.id)).map(item => (
-                      <div key={item.id} className="bg-white p-8 rounded-[3rem] shadow-2xl transform rotate-1">
+                      <div key={item.id} className="bg-white p-8 rounded-[3rem] shadow-2xl transform rotate-1 border-2 border-slate-100">
                         <img src={item.image} className="w-full aspect-square object-contain mb-6" />
-                        <h4 className="text-3xl font-black">{item.title}</h4>
-                        <p className="text-slate-500 italic mt-2">"{item.history}"</p>
+                        <h4 className="text-3xl font-black text-slate-800">{item.title}</h4>
+                        <p className="text-slate-500 italic mt-2 font-medium">"{item.history}"</p>
                       </div>
                     ))}
                   </div>
@@ -492,7 +537,7 @@ export default function App() {
                         </div>
                       </div>
                     </div>
-                    <div className="text-6xl font-black text-indigo-600 font-mono">${totalScore}</div>
+                    <div className="text-4xl font-black text-indigo-600 font-mono">${totalScore}</div>
                   </div>
                 );
               })}
@@ -509,25 +554,34 @@ export default function App() {
 
   // --- Mobile Client ---
   const me = players.find(p => p.id === user?.uid);
-  const myItems = items.filter(i => i.ownerId === user?.uid);
 
   return (
     <div className="min-h-[100dvh] bg-slate-50 flex flex-col max-w-md mx-auto relative overflow-hidden font-sans">
       <div className="bg-slate-900 text-white p-4 flex justify-between items-center z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-500 flex items-center justify-center font-black text-xl">{name?.[0]}</div>
-          <span className="font-black tracking-tight">{name}</span>
+          <div className="w-10 h-10 rounded-2xl bg-indigo-500 flex items-center justify-center font-black text-xl">
+            {name ? name[0] : me?.name ? me.name[0] : '?'}
+          </div>
+          <span className="font-black tracking-tight truncate max-w-[100px]">{name || me?.name || 'Curator'}</span>
         </div>
         <div className="flex flex-col items-end">
           <div className="flex items-center gap-2 bg-slate-800 px-4 py-1.5 rounded-full border border-slate-700 shadow-inner">
             <Coins size={16} className="text-yellow-400" />
             <span className="font-mono font-black text-lg">${me?.cash || 0}</span>
           </div>
-          <p className="text-[9px] font-bold text-slate-500 mt-1 uppercase">Inv: {me?.inventory?.length}/3</p>
+          <p className="text-[9px] font-bold text-slate-500 mt-1 uppercase tracking-tighter">Inventory: {me?.inventory?.length || 0}/3</p>
         </div>
       </div>
 
       <main className="flex-1 overflow-y-auto bg-slate-50 pb-20">
+        {room?.phase === PHASES.LOBBY && (
+          <div className="p-8 text-center space-y-6 flex flex-col items-center justify-center min-h-[60vh]">
+            <Users size={80} className="text-indigo-500 animate-pulse" />
+            <h2 className="text-3xl font-black">Waiting for Lobby...</h2>
+            <p className="text-slate-500 font-medium">Sit tight! The host will begin the studio shortly.</p>
+          </div>
+        )}
+
         {room?.phase === PHASES.STUDIO_DRAW && (
           <DrawingCanvas key={currentPromptIdx} prompt={PROMPTS[Math.floor(Math.random() * PROMPTS.length)]} timeLimit={90} onSave={handleDrawingSubmit} />
         )}
@@ -535,21 +589,21 @@ export default function App() {
         {room?.phase === PHASES.AUCTION && room.currentAuction && (
           <div className="p-6 space-y-8 min-h-[80vh] flex flex-col justify-center animate-in fade-in">
             <div className="text-center space-y-2">
-              <h3 className="text-3xl font-black text-slate-900 leading-tight">Lot: {room.currentAuction.item.title}</h3>
+              <h3 className="text-3xl font-black text-slate-900 leading-tight">Lot: {room.currentAuction.item.title || "Unknown Art"}</h3>
               <div className="inline-block px-4 py-1 bg-slate-200 rounded-full text-xs font-black uppercase text-slate-600">
                 {room.currentAuction.type} Style
               </div>
             </div>
 
-            <div className={`w-full bg-slate-900 rounded-[3rem] p-12 text-center text-white shadow-2xl relative border-4 ${me?.inventory?.length >= 3 ? 'border-red-500' : 'border-indigo-500'}`}>
+            <div className={`w-full bg-slate-900 rounded-[3rem] p-12 text-center text-white shadow-2xl relative border-4 ${(me?.inventory?.length || 0) >= 3 ? 'border-red-500' : 'border-indigo-500'}`}>
               <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Current Price</p>
               <p className="text-8xl font-black font-mono tracking-tighter">${room.currentAuction.highestBid}</p>
               <p className="text-indigo-400 mt-4 font-black text-xl">{room.currentAuction.highestBidderName || "---"}</p>
-              {me?.inventory?.length >= 3 && (
-                <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center p-8 rounded-[3rem]">
+              {(me?.inventory?.length || 0) >= 3 && (
+                <div className="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center p-8 rounded-[3rem] text-center">
                   <AlertCircle size={48} className="text-red-500 mb-2" />
                   <p className="font-black text-lg">MUSEUM FULL</p>
-                  <p className="text-sm opacity-70">You already have 3 pieces!</p>
+                  <p className="text-sm opacity-70">You already have 3 pieces! You cannot bid.</p>
                 </div>
               )}
             </div>
@@ -557,14 +611,14 @@ export default function App() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 {[10, 50, 100, 250].map(amt => (
-                  <button key={amt} disabled={me?.inventory?.length >= 3} onClick={() => placeBid(room.currentAuction.highestBid + amt)} className="py-4 bg-white border-4 border-slate-200 rounded-2xl font-black text-indigo-600 shadow-sm disabled:opacity-50">
+                  <button key={amt} disabled={(me?.inventory?.length || 0) >= 3} onClick={() => placeBid((room.currentAuction.highestBid || 0) + amt)} className="py-4 bg-white border-4 border-slate-200 rounded-2xl font-black text-indigo-600 shadow-sm active:scale-95 disabled:opacity-50 transition-all">
                     +${amt}
                   </button>
                 ))}
               </div>
               <button 
-                disabled={me?.inventory?.length >= 3}
-                onClick={() => placeBid(room.currentAuction.type === 'DUTCH' ? room.currentAuction.highestBid : room.currentAuction.highestBid + 1)} 
+                disabled={(me?.inventory?.length || 0) >= 3}
+                onClick={() => placeBid(room.currentAuction.type === 'DUTCH' ? room.currentAuction.highestBid : (room.currentAuction.highestBid || 0) + 1)} 
                 className={`w-full py-8 text-white rounded-[2rem] font-black text-3xl shadow-xl active:scale-95 transition-all ${room.currentAuction.type === 'DUTCH' ? 'bg-orange-600' : 'bg-indigo-600'} disabled:opacity-50`}
               >
                 {room.currentAuction.type === 'DUTCH' ? 'BUY NOW' : 'PLACE BID'}
@@ -576,34 +630,35 @@ export default function App() {
         {room?.phase === PHASES.CURATION && (
           <div className="p-8 space-y-8 animate-in slide-in-from-right">
             <div className="bg-indigo-600 text-white p-8 rounded-[2rem] space-y-2 shadow-2xl">
-              <p className="text-xs font-black uppercase tracking-widest opacity-70">The Grand Opening Theme</p>
+              <p className="text-xs font-black uppercase tracking-widest opacity-70">Exhibition Theme</p>
               <h2 className="text-3xl font-black">{room.theme}</h2>
             </div>
             
             <div className="space-y-6">
               <div className="space-y-2">
-                <p className="text-xs font-black text-slate-400 uppercase">Step 1: Title your Exhibit</p>
-                <input type="text" id="w-title" placeholder="A Clever Name..." className="w-full p-5 bg-white rounded-2xl border-4 border-slate-200 font-black text-lg outline-none focus:border-indigo-500" />
+                <p className="text-xs font-black text-slate-400 uppercase">Step 1: Wing Title</p>
+                <input type="text" id="w-title" placeholder="e.g. The First Selfie" className="w-full p-5 bg-white rounded-2xl border-4 border-slate-200 font-black text-lg outline-none focus:border-indigo-500" />
               </div>
               
               <div className="space-y-4">
-                <p className="text-xs font-black text-slate-400 uppercase">Step 2: Pick 2 items to display</p>
+                <p className="text-xs font-black text-slate-400 uppercase">Step 2: Selection (Top 2)</p>
                 <div className="grid grid-cols-3 gap-3">
                   {items.filter(i => i.ownerId === user?.uid).map(item => (
                     <div key={item.id} className="aspect-square bg-white rounded-2xl border-4 border-indigo-500 overflow-hidden relative">
                       <img src={item.image} className="w-full h-full object-contain p-1" />
                     </div>
                   ))}
+                  {items.filter(i => i.ownerId === user?.uid).length === 0 && <p className="col-span-3 text-center text-slate-400 py-4 font-bold">You have no items!</p>}
                 </div>
               </div>
               
               <button onClick={() => {
-                const title = document.getElementById('w-title').value;
+                const titleInput = document.getElementById('w-title');
+                const title = titleInput ? titleInput.value : "My Wing";
                 const inv = items.filter(i => i.ownerId === user?.uid).map(i => i.id).slice(0, 2);
                 updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), {
-                  wingTitle: title, finalInventory: inv, ready: true
+                  wingTitle: title || "My Wing", finalInventory: inv, ready: true
                 });
-                // Auto advance handled by Host logic check
               }} className="w-full py-6 bg-indigo-600 text-white rounded-3xl font-black text-2xl shadow-xl">OPEN MY WING</button>
             </div>
           </div>
@@ -611,14 +666,15 @@ export default function App() {
 
         {room?.phase === PHASES.VOTING && !me?.ready && (
           <div className="p-8 space-y-8 animate-in slide-in-from-bottom">
-            <h2 className="text-3xl font-black text-center text-slate-900">Cast Your Vote</h2>
+            <h2 className="text-3xl font-black text-center text-slate-900 leading-tight">Cast Your Vote for Lead Curator</h2>
             <div className="space-y-4">
               {players.filter(p => p.id !== user.uid && p.wingTitle).map(p => (
-                <button key={p.id} onClick={() => {
+                <button key={p.id} onClick={async () => {
                   const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', p.id);
-                  getDoc(pRef).then(snap => updateDoc(pRef, { votes: (snap.data().votes || 0) + 1 }));
-                  updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true });
-                }} className="w-full bg-white p-6 rounded-[2rem] border-4 border-slate-200 shadow-sm text-left active:border-indigo-500 transition-all">
+                  const snap = await getDoc(pRef);
+                  await updateDoc(pRef, { votes: (snap.data().votes || 0) + 1 });
+                  await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true });
+                }} className="w-full bg-white p-6 rounded-[2rem] border-4 border-slate-200 shadow-sm text-left active:border-indigo-500 hover:scale-[1.02] transition-all">
                   <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{p.name}'s Wing</p>
                   <p className="text-2xl font-black text-slate-800">"{p.wingTitle}"</p>
                 </button>
@@ -627,19 +683,19 @@ export default function App() {
           </div>
         )}
 
-        {(me?.ready || (room?.phase === PHASES.PRESENTATION)) && (
-          <div className="p-16 text-center space-y-6">
-            <CheckCircle2 size={80} className="mx-auto text-indigo-500" />
-            <h3 className="text-3xl font-black">Eyes on the Screen!</h3>
-            <p className="text-slate-500 font-medium italic">The grand opening is in progress...</p>
+        {(me?.ready || (room?.phase === PHASES.PRESENTATION) || (room?.phase === PHASES.RESULTS)) && (
+          <div className="p-16 text-center space-y-6 flex flex-col items-center justify-center min-h-[60vh]">
+            <CheckCircle2 size={100} className="text-indigo-500 animate-bounce" />
+            <h3 className="text-3xl font-black text-slate-900">Finished!</h3>
+            <p className="text-slate-500 font-medium italic">Look at the main screen for results.</p>
           </div>
         )}
       </main>
 
       <div className="bg-white border-t-2 border-slate-200 p-5 flex justify-around items-center text-slate-400">
-         <div className="flex flex-col items-center opacity-40"><Palette size={24} /></div>
-         <div className="flex flex-col items-center opacity-40"><Gavel size={24} /></div>
-         <div className="flex flex-col items-center opacity-40"><Award size={24} /></div>
+         <div className={`flex flex-col items-center ${room?.phase?.includes('STUDIO') ? 'text-indigo-600' : 'opacity-40'}`}><Palette size={24} /></div>
+         <div className={`flex flex-col items-center ${room?.phase === PHASES.AUCTION ? 'text-indigo-600' : 'opacity-40'}`}><Gavel size={24} /></div>
+         <div className={`flex flex-col items-center ${room?.phase === PHASES.RESULTS ? 'text-indigo-600' : 'opacity-40'}`}><Award size={24} /></div>
       </div>
     </div>
   );
