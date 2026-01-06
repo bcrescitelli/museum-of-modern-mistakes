@@ -58,27 +58,44 @@ const generateRoomCode = () => Math.random().toString(36).substring(2, 6).toUppe
 
 const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState('#000000');
   const [thickness, setThickness] = useState(8);
   const [timeLeft, setTimeLeft] = useState(timeLimit);
   const contextRef = useRef(null);
 
+  // Initialize Canvas with proper dimensions
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const container = canvas.parentElement;
-    canvas.width = container.offsetWidth * 2;
-    canvas.height = container.offsetHeight * 2;
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
+    const initCanvas = () => {
+      const canvas = canvasRef.current;
+      const container = containerRef.current;
+      if (!canvas || !container) return;
 
-    const context = canvas.getContext("2d");
-    context.scale(2, 2);
-    context.lineCap = "round";
-    context.strokeStyle = color;
-    context.lineWidth = thickness;
-    contextRef.current = context;
+      const dpr = window.devicePixelRatio || 1;
+      const rect = container.getBoundingClientRect();
+      
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+
+      const context = canvas.getContext("2d");
+      context.scale(dpr, dpr);
+      context.lineCap = "round";
+      context.strokeStyle = color;
+      context.lineWidth = thickness;
+      contextRef.current = context;
+    };
+
+    // Wait for a frame to ensure container layout is complete
+    const handle = requestAnimationFrame(initCanvas);
+    window.addEventListener('resize', initCanvas);
+    
+    return () => {
+      cancelAnimationFrame(handle);
+      window.removeEventListener('resize', initCanvas);
+    };
   }, []);
 
   useEffect(() => {
@@ -130,18 +147,21 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
   };
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-slate-900 p-2 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900 p-2 overflow-hidden">
       <div className="flex justify-between items-center p-3 bg-slate-800 rounded-2xl mb-2">
-        <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase">Prompt</p>
-          <h2 className="text-lg font-black text-white leading-tight">{prompt}</h2>
+        <div className="max-w-[70%]">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Draw This:</p>
+          <h2 className="text-lg font-black text-white leading-tight truncate">{prompt}</h2>
         </div>
-        <div className={`px-4 py-2 rounded-xl font-mono text-xl font-bold ${timeLeft < 10 ? 'bg-red-500 animate-pulse' : 'bg-indigo-600'}`}>
+        <div className={`px-4 py-2 rounded-xl font-mono text-xl font-bold ${timeLeft < 10 ? 'bg-red-500 animate-pulse' : 'bg-indigo-600'} text-white`}>
           {timeLeft}s
         </div>
       </div>
       
-      <div className="flex-1 relative bg-white rounded-[2rem] shadow-2xl overflow-hidden touch-none cursor-crosshair border-8 border-slate-800">
+      <div 
+        ref={containerRef}
+        className="flex-1 relative bg-white rounded-[2rem] shadow-2xl overflow-hidden touch-none cursor-crosshair border-8 border-slate-800"
+      >
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}
@@ -151,6 +171,7 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
           onTouchStart={(e) => { e.preventDefault(); startDrawing(e); }}
           onTouchMove={(e) => { e.preventDefault(); draw(e); }}
           onTouchEnd={() => setIsDrawing(false)}
+          className="block w-full h-full"
         />
       </div>
 
@@ -161,12 +182,12 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
               <button
                 key={c}
                 onClick={() => setColor(c)}
-                className={`w-10 h-10 rounded-full border-4 ${color === c ? 'border-indigo-400 scale-110' : 'border-slate-700 hover:scale-105'} transition-all`}
+                className={`w-10 h-10 rounded-full border-4 ${color === c ? 'border-indigo-400 scale-110' : 'border-slate-700 hover:scale-105'} transition-all shadow-lg`}
                 style={{ backgroundColor: c }}
               />
             ))}
           </div>
-          <button onClick={() => contextRef.current.clearRect(0,0,canvasRef.current.width,canvasRef.current.height)} className="p-3 bg-slate-800 text-slate-400 rounded-xl">
+          <button onClick={() => contextRef.current.clearRect(0,0,canvasRef.current.width,canvasRef.current.height)} className="p-3 bg-slate-800 text-slate-400 rounded-xl hover:text-white transition-colors">
             <Trash2 size={24} />
           </button>
         </div>
@@ -192,6 +213,7 @@ export default function App() {
   const [roomId, setRoomId] = useState('');
   const [name, setName] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
+  const [currentPromptIdx, setCurrentPromptIdx] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const audioRef = useRef(null);
 
@@ -384,7 +406,7 @@ export default function App() {
     const itemRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items'));
     await setDoc(itemRef, {
       id: itemRef.id, artistId: user.uid, artistName: name, image: dataUrl,
-      prompt: PROMPTS[Math.floor(Math.random() * PROMPTS.length)],
+      prompt: PROMPTS[currentPromptIdx % PROMPTS.length],
       title: '', history: '', appraised: false, ownerId: null, pricePaid: 0, auctioned: false
     });
     
@@ -583,7 +605,17 @@ export default function App() {
         )}
 
         {room?.phase === PHASES.STUDIO_DRAW && (
-          <DrawingCanvas key={currentPromptIdx} prompt={PROMPTS[Math.floor(Math.random() * PROMPTS.length)]} timeLimit={90} onSave={handleDrawingSubmit} />
+          <>
+            {me?.ready ? (
+              <div className="p-16 text-center space-y-6 flex flex-col items-center justify-center min-h-[60vh]">
+                <CheckCircle2 size={100} className="text-indigo-500 animate-bounce" />
+                <h3 className="text-3xl font-black text-slate-900">Masterpieces Sent!</h3>
+                <p className="text-slate-500 font-medium italic">Wait for the other artists to put down their brushes.</p>
+              </div>
+            ) : (
+              <DrawingCanvas key={currentPromptIdx} prompt={PROMPTS[currentPromptIdx % PROMPTS.length]} timeLimit={90} onSave={handleDrawingSubmit} />
+            )}
+          </>
         )}
 
         {room?.phase === PHASES.AUCTION && room.currentAuction && (
