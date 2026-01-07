@@ -23,7 +23,8 @@ import {
   AlertCircle, History,
   PenTool,
   Star,
-  Target
+  Target,
+  LayoutGrid
 } from 'lucide-react';
 
 // --- Configuration ---
@@ -102,7 +103,6 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
   const [timeLeft, setTimeLeft] = useState(timeLimit);
   const contextRef = useRef(null);
 
-  // Anti-highlight and resizing robust initialization
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -113,16 +113,14 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
     const newWidth = rect.width * dpr;
     const newHeight = rect.height * dpr;
 
-    // Prevent clearing if dimensions didn't change (iPhone toolbar pops, slider usage, etc)
     if (canvas.width === newWidth && canvas.height === newHeight) {
       if (contextRef.current) {
-        contextRef.current.strokeStyle = color;
-        contextRef.current.lineWidth = thickness;
+         contextRef.current.strokeStyle = color;
+         contextRef.current.lineWidth = thickness;
       }
       return;
     }
 
-    // Save existing image before resize
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
@@ -290,8 +288,12 @@ export default function App() {
   }, [roomId, user]);
 
   useEffect(() => {
-    if (audioRef.current) audioRef.current.muted = isMuted;
-    if (room?.phase === PHASES.RESULTS && audioRef.current) audioRef.current.pause();
+    if (audioRef.current) {
+      audioRef.current.muted = isMuted;
+    }
+    if (room?.phase === PHASES.RESULTS && audioRef.current) {
+      audioRef.current.pause();
+    }
   }, [isMuted, room?.phase]);
 
   // Host logic
@@ -329,16 +331,23 @@ export default function App() {
           updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), {
             currentAuction: { itemId: nextItem.id, item: nextItem, type: 'STANDARD', highestBid: 0, highestBidder: null, highestBidderName: null, timer: 7 }
           });
-        } else if (items.length > 0 && items.every(i => i.auctioned)) { startPhase(PHASES.CURATION); }
+        } else if (items.length > 0 && items.every(i => i.auctioned)) {
+          startPhase(PHASES.CURATION);
+        }
       } else {
         timer = setInterval(async () => {
           const auction = room.currentAuction;
           const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
-          if (auction.timer <= 0) { clearInterval(timer); finalizeAuction(); }
-          else { updateDoc(roomRef, { 'currentAuction.timer': auction.timer - 1 }); }
+          if (auction.timer <= 0) {
+            clearInterval(timer);
+            finalizeAuction();
+          } else {
+            updateDoc(roomRef, { 'currentAuction.timer': auction.timer - 1 });
+          }
         }, 1000);
       }
     }
+
     return () => clearInterval(timer);
   }, [view, room?.phase, room?.currentAuction, room?.presentingIdx, room?.presentationTimer, players, items]);
 
@@ -347,6 +356,7 @@ export default function App() {
     const auction = room.currentAuction;
     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
     const itemRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items', auction.itemId);
+
     if (auction.highestBidder) {
       await updateDoc(itemRef, { ownerId: auction.highestBidder, pricePaid: auction.highestBid, auctioned: true, returned: false });
       const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', auction.highestBidder);
@@ -361,30 +371,59 @@ export default function App() {
   };
 
   const startPhase = async (phase) => {
-    const data = { phase, phaseStartedAt: Date.now(), presentingIdx: 0, presentationTimer: 12 };
+    const data = { 
+      phase, 
+      phaseStartedAt: Date.now(),
+      presentingIdx: 0,
+      presentationTimer: 12
+    };
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), data);
-    for (const p of players) { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', p.id), { ready: false }); }
+    for (const p of players) {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', p.id), { ready: false });
+    }
   };
 
   const placeBid = async (amount) => {
     const me = players.find(p => p.id === user?.uid);
     if (!room?.currentAuction || !me || (me.inventory?.length || 0) >= 3) return;
+    const auction = room.currentAuction;
     if (amount > me.cash) return;
+
     if (navigator.vibrate) navigator.vibrate(50);
+
     await runTransaction(db, async (transaction) => {
       const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
       const roomSnap = await transaction.get(roomRef);
       const current = roomSnap.data().currentAuction;
+
       if (amount <= current.highestBid) return;
-      transaction.update(roomRef, { 'currentAuction.highestBid': amount, 'currentAuction.highestBidder': user.uid, 'currentAuction.highestBidderName': name, 'currentAuction.timer': 7 });
+      transaction.update(roomRef, {
+        'currentAuction.highestBid': amount,
+        'currentAuction.highestBidder': user.uid,
+        'currentAuction.highestBidderName': name,
+        'currentAuction.timer': 7 
+      });
     });
   };
 
   const hostGame = async () => {
-    if (!audioRef.current) { audioRef.current = new Audio('/intro.mp3'); audioRef.current.loop = true; audioRef.current.volume = 0.3; audioRef.current.play().catch(() => {}); }
+    if (!audioRef.current) {
+      const audio = new Audio('/intro.mp3');
+      audio.loop = true;
+      audio.volume = 0.3;
+      audio.play().catch(() => {});
+      audioRef.current = audio;
+    }
     const code = generateRoomCode();
     const commonPrompts = [...PROMPTS].sort(() => 0.5 - Math.random()).slice(0, 3);
-    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code), { hostId: user.uid, phase: PHASES.LOBBY, theme: THEMES[Math.floor(Math.random() * THEMES.length)], currentAuction: null, phaseStartedAt: Date.now(), gamePrompts: commonPrompts });
+    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code), {
+      hostId: user.uid, 
+      phase: PHASES.LOBBY, 
+      theme: THEMES[Math.floor(Math.random() * THEMES.length)], 
+      currentAuction: null, 
+      phaseStartedAt: Date.now(),
+      gamePrompts: commonPrompts
+    });
     setRoomId(code); setView('host');
   };
 
@@ -393,22 +432,39 @@ export default function App() {
     const snap = await getDoc(roomRef);
     if (!snap.exists()) { setStatusMsg("Invalid Room"); return; }
     const objective = OBJECTIVES[Math.floor(Math.random() * OBJECTIVES.length)];
-    await setDoc(doc(roomRef, 'players', user.uid), { name, cash: 1000, inventory: [], ready: false, votes: 0, wingTitle: '', objective });
+    
+    await setDoc(doc(roomRef, 'players', user.uid), { 
+      name, cash: 1000, inventory: [], ready: false, votes: 0, wingTitle: '', objective 
+    });
     setRoomId(code.toUpperCase()); setView('client');
   };
 
   const handleDrawingSubmit = async (dataUrl) => {
     const itemCount = items.filter(i => i.artistId === user.uid).length;
     const prompts = room?.gamePrompts || PROMPTS;
+    
     const itemRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items'));
-    await setDoc(itemRef, { id: itemRef.id, artistId: user.uid, artistName: name, image: dataUrl, prompt: prompts[itemCount] || PROMPTS[0], title: '', history: '', appraised: false, ownerId: null, pricePaid: 0, auctioned: false, returned: false });
-    if (itemCount >= 2) { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true }); }
+    await setDoc(itemRef, {
+      id: itemRef.id, artistId: user.uid, artistName: name, image: dataUrl,
+      prompt: prompts[itemCount] || PROMPTS[0],
+      title: '', history: '', appraised: false, ownerId: null, pricePaid: 0, auctioned: false, returned: false
+    });
+    
+    if (itemCount < 2) {
+      // Still drawing
+    } else {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true });
+    }
   };
 
   const submitAppraisal = async (itemId, title, history) => {
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items', itemId), { title, history, appraised: true, appraiserId: user.uid });
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items', itemId), {
+      title, history, appraised: true, appraiserId: user.uid
+    });
     const remaining = items.filter(i => i.artistId !== user.uid && !i.appraised && i.id !== itemId);
-    if (remaining.length === 0) { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true }); }
+    if (remaining.length === 0) {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true });
+    }
   };
 
   const toggleItemSelection = (id) => {
@@ -421,7 +477,7 @@ export default function App() {
   if (view === 'landing') {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white font-sans">
-        <div className="max-w-xl w-full space-y-12 text-center animate-in fade-in zoom-in duration-700">
+        <div className="max-w-2xl w-full space-y-12 text-center animate-in fade-in zoom-in duration-700">
           <div className="space-y-4 transform -rotate-1">
             <h1 className="text-6xl sm:text-8xl font-black tracking-tighter text-white drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] leading-tight uppercase italic break-words">Museum of Modern Mistakes</h1>
             <p className="text-xl font-bold text-indigo-400 tracking-[0.2em] uppercase mt-2">Fine Art for Fumbling Curators</p>
@@ -529,7 +585,7 @@ export default function App() {
               {players[room.presentingIdx] && (
                 <>
                   <div className="text-center mb-6 space-y-1">
-                    <div className="inline-block px-10 py-1 bg-indigo-600 text-white rounded-full font-black text-sm uppercase tracking-widest shadow-lg mb-2 text-white">Theme: {room.theme}</div>
+                    <div className="inline-block px-10 py-1 bg-indigo-600 text-white rounded-full font-black text-sm uppercase tracking-widest shadow-lg mb-2 text-white italic">Theme: {room.theme}</div>
                     <p className="text-slate-400 font-black text-2xl uppercase tracking-[0.2em] leading-none mb-1">{players[room.presentingIdx].name}'s Gallery</p>
                     <h2 className="text-5xl font-black text-slate-900 leading-tight italic drop-shadow-sm">"{players[room.presentingIdx].wingTitle}"</h2>
                   </div>
@@ -554,7 +610,7 @@ export default function App() {
 
           {room?.phase === PHASES.RESULTS && (
             <div className="w-full max-w-5xl space-y-6 animate-in slide-in-from-bottom">
-              <h2 className="text-[8rem] font-black text-center mb-16 flex items-center justify-center gap-10 leading-none text-slate-900 drop-shadow-sm">
+              <h2 className="text-[8rem] font-black text-center mb-16 flex items-center justify-center gap-10 leading-none text-slate-900 drop-shadow-sm uppercase">
                 <Trophy className="text-yellow-400" size={150} /> Results
               </h2>
               {[...players].sort((a,b) => {
@@ -611,7 +667,7 @@ export default function App() {
                     <div className="flex items-center gap-12">
                       <span className="text-8xl font-black text-slate-200">#{i+1}</span>
                       <div>
-                        <h3 className="text-5xl font-black text-slate-800 mb-2">{p.name}</h3>
+                        <h3 className="text-6xl font-black text-slate-800 mb-2">{p.name}</h3>
                         <div className="flex gap-10 text-2xl text-slate-400 font-bold uppercase tracking-widest">
                           <span className="flex items-center gap-2"><Star className="text-indigo-400" /> Votes: {p.votes || 0}</span>
                           {objBonus > 0 && <span className="text-green-600 flex items-center gap-2 font-black"><Target /> {p.objective.title}</span>}
@@ -708,7 +764,7 @@ export default function App() {
                       <h2 className="text-4xl font-black text-slate-900 italic tracking-tighter uppercase">Appraisal</h2>
                       <p className="text-slate-500 font-black uppercase text-xs tracking-widest mt-1">Title & Authenticity</p>
                     </div>
-                    <div className="aspect-square bg-white rounded-[3.5rem] border-[12px] border-white shadow-2xl overflow-hidden">
+                    <div className="aspect-square bg-white rounded-[3.5rem] border-[12px] border-white shadow-2xl overflow-hidden text-slate-900">
                       <img src={item.image} className="w-full h-full object-contain p-2 bg-slate-50" />
                     </div>
                     <div className="space-y-4 pt-4">
@@ -772,11 +828,11 @@ export default function App() {
                 
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1 leading-none">1. Exhibit Name</p>
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1 leading-none">1. Wing Name</p>
                     <input 
                       type="text" id="w-title" 
                       placeholder="A Clever Title..." 
-                      className="w-full p-5 bg-white rounded-3xl border-4 border-slate-200 font-black text-xl outline-none focus:border-indigo-500 shadow-inner" 
+                      className="w-full p-5 bg-white rounded-3xl border-4 border-slate-200 font-black text-xl outline-none focus:border-indigo-500 shadow-inner text-slate-900" 
                     />
                   </div>
                   
@@ -827,7 +883,7 @@ export default function App() {
             ) : (
               <div className="p-16 text-center space-y-8 flex flex-col items-center justify-center min-h-[60vh] animate-in slide-in-from-bottom">
                 <CheckCircle2 size={140} className="text-indigo-500" />
-                <h3 className="text-4xl font-black text-slate-900 uppercase italic leading-none">Exhibition Sent</h3>
+                <h3 className="text-4xl font-black text-slate-900 uppercase italic leading-none">Gallery Sent!</h3>
                 <p className="text-slate-400 font-black tracking-widest uppercase text-xs">Waiting for other curators.</p>
               </div>
             )}
@@ -865,9 +921,9 @@ export default function App() {
               <CheckCircle2 size={160} className="text-indigo-500 animate-bounce" />
               <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-slate-900 w-12 h-12 rounded-full flex items-center justify-center font-black shadow-lg">✓</div>
             </div>
-            <div className="space-y-4">
-              <h3 className="text-6xl font-black text-slate-900 uppercase italic leading-none tracking-tighter">{voted ? "Vote Cast!" : "Done!"}</h3>
-              <p className="text-slate-500 font-black uppercase tracking-[0.2em] text-sm">Watch the big screen.</p>
+            <div className="space-y-4 text-slate-900">
+              <h3 className="text-6xl font-black uppercase italic leading-none tracking-tighter">{voted ? "Vote Cast!" : "Done!"}</h3>
+              <p className="text-slate-500 font-black uppercase tracking-[0.2em] text-sm">Watch the results reveal.</p>
             </div>
           </div>
         )}
