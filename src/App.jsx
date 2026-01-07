@@ -23,7 +23,6 @@ import {
   AlertCircle, History,
   PenTool,
   Star,
-  Zap,
   Target
 } from 'lucide-react';
 
@@ -53,15 +52,48 @@ const PHASES = {
   RESULTS: 'RESULTS'
 };
 
-const PROMPTS = ["A failed invention", "A cursed heirloom", "A luxury snack", "A DIY haircut gone wrong", "The world's smallest problem", "A suspicious gift", "An invisible pet", "A sentient appliance", "A forgotten time capsule", "Forbidden modern art"];
-const THEMES = ["Items Found at the Bottom of the Ocean", "Gifts for a Bitter Ex", "Evidence of a Time Traveler", "Found in a Haunted Basement", "Relics of a Forgotten Future"];
+const PROMPTS = [
+  "A failed invention", "A cursed heirloom", "A luxury snack", "A DIY haircut gone wrong", "The world's smallest problem", "A suspicious gift", "An invisible pet", "A sentient appliance", "A forgotten time capsule", "Forbidden modern art",
+  "A sandwich that looks like it’s judging you", "a pigeon in a tuxedo at a gala", "the physical embodiment of a Monday", "a haunted bouncy castle", "a cactus trying too hard to be sexy", "a Victorian child discovering a fidget spinner", "a cloud having a mid-life crisis", "a sentient pair of cargo shorts", "the tooth fairy’s day job", "a fish riding a bicycle poorly", "a house built entirely out of loose teeth", "a sleep-deprived sun", "a biblically accurate Furby", "a horse wearing high heels", "the coolest guy at the Renaissance Fair", "a baguette that is also a sword", "an octopus trying to use a laptop", "a very muscular strawberry", "a ghost trying to use a touchscreen", "a mailbox that eats hands", "a fashionable swamp monster", "a dog that is definitely three kids in a trench coat", "a birthday cake for someone you hate", "a rock star who is literally a rock", "the inside of a black hole’s junk drawer", "a squirrel planning a heist", "a toaster that only burns 'Help' into bread", "a yoga pose that is physically impossible", "a gnome who has seen too much", "a refrigerator that is secretly a portal", "a very polite spider", "a sneaker made of actual meat", "the world’s worst superhero", "a tea party for feral raccoons", "a baby with a full beard", "a mountain with a giant zipper", "a jazz-playing shrimp", "a pizza with illegal toppings", "a cat that is clearly a wizard", "a snowman in a tanning bed", "a hot dog that is a legal witness", "a tree growing money but it is all pennies", "a UFO that looks like a kitchen appliance", "a butterfly with human ears", "a cowboy who is also a centaur", "a skeleton at a spa", "a pineapple that is also a grenade", "a very aggressive dandelion", "a sofa that looks like it wants to eat you", "a mime fighting an invisible bear", "a gargoyle with a selfie stick", "a penguin at a tropical resort", "a banana peel’s revenge", "a robot trying to understand love", "a burger that is way too tall", "a lemon that just tasted something sour", "a wizard who is bad at magic", "a disco ball made of eyes", "a dragon who hoards used napkins", "a skateboard made of ice", "a shark in a business meeting", "a mailbox full of bees", "a crown made of hot dogs", "a vampire at a garlic festival", "a moon with a do not disturb sign", "a toilet that is also a throne", "a giraffe with a very short neck", "a marshmallow getting toasted", "a pair of glasses for a cyclops", "a guitar that is also a chainsaw", "a very fancy potato", "a spider with eight different shoes", "a worm wearing a scarf", "a candle that smells like regret", "a phone that is literally just a brick", "a beehive that is also a condo", "a turtle with a jetpack", "a steak that looks like a celebrity", "a grumpy raincloud", "a blender that is terrified of kale", "a car that runs on vibes", "a pirate who is afraid of water", "a watermelon with teeth", "a clock that tells you when you will die", "a mushroom with a hat", "a sock that lost its twin", "a very judgmental mirror", "a squirrel with a lightsaber", "a taco that is also a wallet", "a tree that grows hands instead of leaves", "a disco ball in a cave", "a ghost eating a slice of pizza", "a robot with a mid-life crisis", "a fish in a birdcage", "a volcano that erupts glitter", "a very buff pigeon", "a snowman at the beach", "a cactus that needs a hug", "a suitcase with legs", "a moon made of cheese", "a very fashionable Bigfoot", "a toaster that is also a camera", "a bird with human arms", "a very angry cupcake", "a snake wearing a sweater", "a bowling ball with a face", "a very fancy dumpster", "a lighthouse that is also a giant candle", "a teapot that is also a house", "a very cool worm", "a cat with a jetpack", "a very tall hat", "a dog in a space suit", "a very angry cloud", "a pizza with eyes", "a very fancy rat", "a ghost in a bikini", "a robot with a hat", "a very buff cat", "a fish with a hat", "a very fancy frog", "a ghost with a hat", "a robot with a dog", "a very angry sun", "a pizza with a hat", "a very fancy bird", "a ghost with a dog", "a robot with a cat", "a very angry moon", "a pizza with a cat", "a very fancy fish", "a ghost with a cat", "a robot with a hat", "a very angry star", "a pizza with a dog", "a very fancy snail", "a ghost with a bird", "a robot with a bird", "a very angry planet", "a pizza with a bird", "a very fancy lizard", "a ghost with a snail", "a robot with a snail", "a very angry comet", "a pizza with a snail", "a very fancy bug", "a ghost with a bug", "a robot with a bug", "a very angry asteroid", "a pizza with a bug", "a bowling ball having a nightmare", "a sentient jar of mayonnaise in a beauty pageant", "a gargoyle trying to hide a sneeze", "an avocado with a realistic human eye", "a squirrel wearing tiny denim overalls", "a lawnmower that only eats four-leaf clovers", "a cloud that is actually just a big pile of mashed potatoes", "a skyscraper with a giant belly button", "a pigeon wearing a wire for the FBI", "a spider trying to knit a sweater", "a hot dog in a sleeping bag", "a tree growing human ears instead of leaves", "a toaster that is secretly a DJ", "a haunted box of raisins", "a very muscular goldfish", "a cowboy riding a giant shrimp", "a mime trapped in a real glass box", "a vampire at a blood drive with a coupon", "a pizza with a missing poster for the pepperoni", "a cat in a business suit giving a PowerPoint", "a snowman with a flamethrower", "a lemon with a six-pack", "a mailbox full of spaghetti", "a very polite monster under the bed", "a cactus trying to use a balloon animal", "a banana wearing a leather jacket", "a ghost trying to wear a backpack", "a robot trying to eat a salad", "a squirrel with a tiny megaphone", "a very fancy brick", "a dragon with a collection of rubber ducks", "a shark wearing a life vest", "a pineapple with a mohawk", "a very angry loaf of bread", "a turtle with a speed limit sign", "a ghost in a tuxedo", "a robot with a mid-life crisis and a sports car", "a fish with a snorkel", "a very buff butterfly", "a tree with a giant zipper", "a disco ball in a dumpster", "a very fancy rat in a tiny bathtub", "a snowman at a BBQ", "a cactus in a knitted sweater", "a suitcase with human legs and high heels", "a moon with a giant Band-Aid", "a very fashionable Bigfoot at brunch", "a toaster that only pops up live birds", "a bird with human hands for wings", "a very angry cupcake with a knife", "a snake wearing a scarf and a monocle", "a bowling ball with a toupee", "a very fancy dumpster fire", "a lighthouse that is a giant flashlight", "a teapot that is a time machine", "a very cool worm with sunglasses and a skateboard", "a cat with a jetpack and a laser pointer", "a very tall hat with a smaller hat on top", "a dog in a space suit chasing a bone satellite", "a very angry cloud with lightning teeth", "a pizza with a face made of toppings", "a very fancy rat eating a tiny cheese plate", "a ghost in a polka dot bikini", "a robot with a cowboy hat and a lasso", "a very buff cat lifting a giant yarn ball", "a fish with a top hat and a cane", "a very fancy frog on a lily pad throne", "a ghost with a tiny pet ghost dog", "a robot with a mechanical cat", "a very angry sun with sunglasses", "a pizza with a tiny chef hat", "a very fancy bird with a pearl necklace", "a ghost with a suitcase and a map", "a robot with a tiny robot child", "a very angry moon with a nightcap", "a pizza with a cat face", "a very fancy fish in a tuxedo", "a ghost with an umbrella in the rain", "a robot with a birthday cake", "a very angry star with a frown", "a pizza with a dog face", "a very fancy snail with a glitter shell", "a ghost with a bird on its shoulder", "a robot with a pet bird", "a very angry planet with rings", "a pizza with a bird face", "a very fancy lizard in a suit", "a ghost with a pet snail", "a robot with a pet snail", "a very angry comet with a tail", "a pizza with a snail face", "a very fancy bug with a top hat", "a ghost with a pet bug", "a robot with a pet bug", "a very angry asteroid with eyes", "a pizza with a bug face", "a sentient cloud of bees holding a balloon", "a refrigerator running away from a kitchen", "a skeleton playing a ribcage like a xylophone", "a very fancy rock with a mustache"
+];
+
+const THEMES = [
+  "Items Found at the Bottom of the Ocean", "Gifts for a Bitter Ex", "Evidence of a Time Traveler", "Found in a Haunted Basement", "Relics of a Forgotten Future",
+  "The Hall of I Could’ve Sworn I Put My Keys There", "Is it Art or Did the Janitor Leave a Bucket Here?", "A Retrospective on the Year 1998 Which Never Actually Happened", "The Existential Dread of a Sentient Toaster", "Proof That Horses Are Just Big Dogs with Better PR", "The Everything is Cake Conspiracy Wing", "A Tribute to People Who Still Use Yahoo Mail", "The Museum of Slightly Damp Socks", "Evidence of the Great Squirrel Uprising of 1922", "The Gallery of Forgotten Wi-Fi Passwords", "An Inquiry into Why We All Fear the Geico Gecko", "The I’m Not Mad I’m Just Disappointed Wing", "A Comment on Barbie Can She Really Do It All?", "Portraits of People Who Definitely Stole Your Lighter", "The Science of Why Cereal Tastes Better at 2 AM", "The Hall of Failed Inventions for Dogs", "A Deep Dive into the Secret Life of Tupperware Lids", "The Was That a Ghost or Just My House Settling Wing", "Evidence that Time Travel Exists But It’s Only for Ants", "The Gallery of Confusingly Sexy Vegetables", "Why Does Everyone in This 17th Century Painting Look Like Bill Murray?", "The Hall of Bad Haircuts and the Regret That Follows", "An Exploration of the Vibe Shift of 2014", "The Oops All Spiders Exhibit", "Portraits of People Who Think They’re Better Than You", "The Museum of Things We Found Under the Couch", "A Retrospective on the Guy Who Invented the Live Laugh Love Sign", "The Hall of Objects That Look Like They Have Faces", "Why Is the Ocean Like That A Scientific Mystery", "The I Definitely Saw a UFO but No One Believes Me Gallery", "The Existential Crisis of a Middle-Aged Mall Santa", "A Collection of Extremely Passive-Aggressive Post-It Notes", "The Hall of Famous Animals Who Were Actually Jerks", "Why Is Every Free Couch on Craigslist Haunted?", "A Tribute to the First Person to Ever Eat a Lobster", "The I Think I Left the Stove On Exhibit", "The Secret History of the World’s Most Average Man", "The Gallery of It’s Not a Phase Mom", "Why Are Birds So Loud in the Morning A Criminal Investigation", "The Hall of People Who Clap When the Plane Lands", "A Deep Dive into the Mandela Effect But for Small Things", "The I Smelled It But I Didn't Deal It Wing", "A Collection of Every Missing Pen from Every Bank Ever", "The Museum of I’ll Do It Tomorrow", "Why Does This Statue Look Like It’s About to Ask Me for a Cigarette", "The Hall of Extremely Specific Phobias", "An Inquiry Into Why Your Dad Loves This Particular Chair", "The It Seemed Like a Good Idea at the Time Gallery", "A Retrospective on the Great Glitter Spill of 2007", "The Museum of Is This Still Good or Should I Throw It Away", "The Hall of Unfinished Novels by People with Main Character Syndrome", "Evidence that Cats Are Secretly Governing the Earth", "The Why is My Back Hurting I’m Only 28 Exhibit", "A Collection of Things That Should Not Be Deep Fried", "The Hall of People Who Remind the Teacher About Homework", "The Gallery of I'm Just Saying It's Interesting That", "Why Does This Cloud Look Like My Divorce Attorney", "The Museum of Misattributed Quotes", "The Everything is Fine Wing It Is Not Fine", "A Tribute to the Brave Soul Who First Milked a Cow", "The Hall of People Who Talk During Movies", "The I Don't Know How to Use This App Exhibit", "Why Is This Man Holding a Fish in His Dating Profile", "The Gallery of I'm Not a Robot Captchas", "The Museum of Things That Smell Like Grandma’s House", "The Hall of I Can't Believe This Isn't Butter", "An Investigation Into Where All the Left Shoes Go", "The I'm Only Here for the Gift Shop Wing", "A Collection of Every World's Best Dad Mug Ever Made", "The Gallery of Did I Lock the Door Anxiety", "The Museum of People Who Wear Sunglasses Indoors", "The Hall of I'm Not Like Other Girls", "Why Is This Painting Looking At My Wallet", "The I'm Not Saying It's Aliens But It's Aliens Exhibit", "A Tribute to the Guy Who Invented the Plastic Thingy on Shoelaces", "The Gallery of I'm Just Here for the Free Wine", "The Museum of I Thought This Was a Costume Party", "The Hall of People Who Don't Return Their Shopping Carts", "Why Is My Computer Making That Noise A Horror Story", "The I'm Not Angry This Is Just My Face Exhibit", "A Deep Dive into the Culture of Live Laugh Toaster Strudel", "The Gallery of I'm Not a Doctor But I Play One on TV", "The Museum of I've Seen Better Days", "The Hall of People Who Reply All to Company Emails", "Why Is This Baby Judging Me", "The I'm Not a Regular Mom I'm a Cool Mom Wing", "A Tribute to the Person Who Invented the Pet Rock", "The Gallery of I'm Not Stuck I'm Just Resting", "The Museum of I Can't Believe I Paid 20 Dollars for This", "The Hall of People Who Think They Can Sing", "Why Is This Dog Looking at Me Like I Owe Him Money", "The I'm Not Crying It's Just Allergies Exhibit", "A Deep Dive into the World of Competitive Nap-Taking", "The Gallery of I'm Not a Hoarder I'm a Collector", "The Museum of I'm Not Lost I'm Exploring", "The Hall of People Who Use Too Much Axe Body Spray", "Why Is This Person Laughing at a Salad", "The I'm Not a Genius I Just Have Google Wing", "A Tribute to the Person Who Invented the Spork", "The Gallery of I'm Not Tired I'm Just Oh Wait I'm Tired", "The Museum of I'm Not a Morning Person", "The Hall of People Who Talk to Their Pets Like They're Human", "Why Is This Statue Wearing a Hat", "The I'm Not an Expert But Exhibit", "A Deep Dive into the History of the High Five", "The Gallery of I'm Not Weird I'm Limited Edition", "The Museum of I'm Not a Fan of This", "The Hall of People Who Eat Pizza with a Fork", "Why Is This Tree Screaming", "The I'm Not a People Person Wing", "A Tribute to the Person Who Invented the Snuggie", "The Gallery of I'm Not a Liar I'm a Storyteller", "The Museum of I'm Not a Quitter I'm a Refiner", "The Hall of People Who Drink Orange Juice After Brushing Their Teeth", "Why Is This Person Running A Mystery", "The I'm Not a Snack I'm a Whole Meal Exhibit", "A Deep Dive into the World of Extreme Ironing", "The Gallery of I'm Not a Fan of Change", "The Museum of I'm Not a Fan of You", "The Hall of People Who Stand Up as Soon as the Plane Lands", "Why Is This Bird So Fancy", "The I'm Not a Fan of This Theme Wing", "A Tribute to the Person Who Invented the Fidget Spinner", "The Gallery of I'm Not a Fan of Your Attitude", "The Museum of I'm Not a Fan of Museums", "The Hall of People Who Use Irregardless", "Why Is This Wall So Sticky", "The I'm Not a Fan of Mondays Exhibit", "A Deep Dive into the World of Competitive Sleeping", "The Gallery of I'm Not a Fan of Social Media", "The Museum of I'm Not a Fan of This Exhibit", "The Hall of People Who Leave Their High Beams On", "Why Is This Person Wearing Socks with Sandals", "The I'm Not a Fan of This Game Wing", "A Tribute to the Person Who Invented the Selfie Stick", "The Gallery of I'm Not a Fan of Your Face", "The Museum of I'm Not a Fan of This List", "The Hall of People Who Don't Use Their Turn Signal", "Why Is This Cat So Chonky", "The I'm Not a Fan of Heat Exhibit", "A Deep Dive into the World of Professional Hiding", "The Gallery of I'm Not a Fan of Cold", "The Museum of I'm Not a Fan of This Table", "The Hall of People Who Spoil Movies", "Why Is This Person So Loud", "The I'm Not a Fan of Silence Wing", "A Tribute to the Person Who Invented the Pool Noodle", "The Gallery of I'm Not a Fan of This Font", "The Museum of I'm Not a Fan of You Either", "The Hall of People Who Clap at the End of Movies", "The Hall of I Thought This Was A Wendy’s", "A Retrospective on People Who Pronounce the L in Salmon", "The Museum of Half Eaten Sandwiches Left in the Breakroom", "The Gallery of I'm Not Saying I'm Batman But", "Why Does My Printer Hate Me A Scientific Inquiry", "The Hall of I Only Read the SparkNotes", "A Tribute to the First Person to Wear Crocs Unironically", "The Gallery of I'm Not A Regular Dad I'm A Sad Dad", "The Museum of Things That Shouldn't Be Flavored Like Pumpkin Spice", "The Hall of People Who Stand Too Close in Line", "An Investigation into Why Every Statue has No Pants", "The Gallery of Is This Art or Did Someone Just Spill Gravy", "The Museum of Failed Sitcom Pilots from the 80s", "The Hall of I'm Not Angry I'm Just Disappointed Part II", "Why Is There a Door Here The Museum of Nonsensical Architecture", "The Gallery of I Saw It on TikTok So It Must Be True", "The Museum of Things That Smell Like a Bowling Alley", "The Hall of People Who Talk to Their Houseplants Like Children", "An Inquiry into Why We All Own One Special Mug", "The Gallery of I'm Not Lost I'm Just Taking the Scenic Route", "The Museum of Failed High Fives and Awkward Handshakes", "The Hall of I'm Not A Scientist But I Have An Opinion", "Why Does This Abstract Painting Look Like My Ex", "The Gallery of I'm Just Here for the Validation", "The Museum of Objects Found in a Gas Station Parking Lot", "The Hall of I'm Not A Hoarder I'm A Curator of Trash", "An Investigation into Why Kids Like the Baby Shark Song", "The Gallery of I'm Not Crying I'm Just Sweating Through My Eyes", "The Museum of I'll Do It After This One More Episode", "The Hall of People Who Wear Shorts in the Winter", "Why Is This Sculpture Looking at My Search History", "The Gallery of I'm Not A Professional But I Have A Blog", "The Museum of I Can't Believe This Is A Real Job", "The Hall of People Who Use Their Speakerphone in Public", "An Inquiry into Why Every Cat Thinks They Are a God", "The Gallery of I'm Not A Morning Person I'm A Warning Person", "The Museum of I've Been Meaning to Read That for Three Years", "The Hall of I'm Not A Hipster I Just Like Vinyl", "Why Does My Shower Curtain Keep Trying to Hug Me", "The Gallery of I'm Just Here to Look Intellectual", "The Museum of Failed Diet Trends and Broken Dreams", "The Hall of People Who Treat Every Grocery Store Like a Race Track", "An Investigation into Why U Follows Q A Thriller", "The Gallery of I'm Not A Tourist I Live Here I Don't", "The Museum of I Swear I Had a Point Before I Started Talking", "The Hall of I'm Not A Dog Person But Look at This Puppy", "Why Are All the Good Snacks on the Top Shelf", "The Gallery of I'm Just Here to Charge My Phone", "The Museum of I'm Not A Boomer I Just Don't Understand Technology", "The Hall of People Who Clap When the Movie Ends at Home", "An Inquiry into Why We All Fear the Low Battery Icon", "The Gallery of I'm Not A Perfectionist I'm Just Right", "The Museum of I'm Not A Fan of Your Vibe", "The Hall of People Who Take Too Many Selfies in the Gym", "Why Is This Museum So Cold An Ice Cold Mystery", "The Gallery of I'm Not A Chef I Just Own a Cast Iron Skillet", "The Museum of I'm Not A Fan of This Conversation", "The Hall of People Who Walk Slowly in the Middle of the Sidewalk", "An Investigation into Why Everyone Loves a Good Nap", "The Gallery of I'm Not A Fan of This Painting But I'll Pretend", "The Museum of I'm Not A Fan of Your Face Volume 2", "The Hall of People Who Leave Their Christmas Lights Up in July", "Why Does This Art Gallery Smell Like Old Broccoli", "The Gallery of I'm Not A Fan of Social Interaction", "The Museum of I'm Not A Fan of This Exhibit Wait I Am", "The Hall of People Who Don't Put the Lid Back on the Toothpaste", "An Inquiry into Why Socks Disappear in the Wash", "The Gallery of I'm Not A Fan of This List I Love It", "The Museum of I'm Not A Fan of Your Opinion", "The Hall of People Who Wear Sunglasses at Night", "Why Is This Museum Hall Infinite A Spatial Crisis", "The Gallery of I'm Not A Fan of This Universe", "The Museum of I'm Not A Fan of This Reality", "The Hall of People Who Talk to Themselves in Public Wait That's Me", "An Investigation into Why We All Have a Junk Drawer", "The Gallery of I'm Not A Fan of This Dimension", "The Museum of I'm Not A Fan of This Timeline", "The Hall of People Who Drink Milk Straight from the Carton", "Why Is This Painting Screaming And Why Do I Relate", "The Gallery of I'm Not A Fan of This Existence", "The Museum of I'm Not A Fan of This Reality Reprise", "The Hall of People Who Leave One Second on the Microwave", "An Inquiry into Why We All Hate the Sound of Our Own Voice", "The Gallery of I'm Not A Fan of This Consciousness", "The Museum of I'm Not A Fan of This Simulation", "The Hall of People Who Eat the Core of an Apple", "Why Is This Wall Judging Me", "The Gallery of I'm Not A Fan of This Experience", "The Museum of I'm Not A Fan of This Museum Meta Edition", "The Hall of People Who Use the Last of the Toilet Paper and Don't Replace It", "An Investigation into Why We Like to Smell Our Own Farts", "The Gallery of I'm Not A Fan of This Aesthetic", "The Museum of I'm Not A Fan of This Vibe Remix", "The Hall of People Who Ask Is It Hot Enough for Ya", "Why Is This Sculpture Made of Used Bubblegum", "The Gallery of I'm Not A Fan of This Concept", "The Museum of I'm Not A Fan of This Art", "The Hall of People Who Don't Say Thank You When You Hold the Door", "An Inquiry into Why We Are All So Tired", "The Gallery of I'm Just Here for the Aesthetic"
+];
 
 const OBJECTIVES = [
   { id: 'HOARDER', title: 'The Hoarder', desc: 'Own 3 items at the end', bonus: 400 },
   { id: 'BARGAIN', title: 'Bargain Hunter', desc: 'Buy an item for < $100', bonus: 300 },
   { id: 'PRODUCER', title: 'The Producer', desc: 'Someone else buys your art', bonus: 300 },
   { id: 'FAN_FAVE', title: 'Fan Favorite', desc: 'Get 2+ votes', bonus: 500 },
-  { id: 'THRIFTY', title: 'Thrifty Curator', desc: 'Finish with > $400 cash', bonus: 300 }
+  { id: 'THRIFTY', title: 'Thrifty Curator', desc: 'Finish with > $400 cash', bonus: 300 },
+  // 25 New roles
+  { id: 'HIGHR_ROLLER', title: 'High Roller', desc: 'Bid over $500 on a single item', bonus: 400 },
+  { id: 'SILENT_PARTNER', title: 'The Silent Partner', desc: 'Never bid on your own art', bonus: 300 },
+  { id: 'ART_THIEF', title: 'The Art Thief', desc: 'Outbid someone in the last 2 seconds', bonus: 350 },
+  { id: 'SNOOT', title: 'The Gallery Snob', desc: 'Write a history over 50 characters', bonus: 200 },
+  { id: 'UNDERDOG', title: 'The Underdog', desc: 'Have the lowest cash and still win a bid', bonus: 400 },
+  { id: 'REFUND', title: 'Mistake Collector', desc: 'Keep 2+ Mistakes in your final wing', bonus: 450 },
+  { id: 'TAX_HAVEN', title: 'Tax Haven', desc: 'Spend exactly $0 (and survive)', bonus: 600 },
+  { id: 'MASTERMIND', title: 'The Mastermind', desc: 'Win with less than $50 remaining', bonus: 500 },
+  { id: 'INVESTOR', title: 'Aggressive Investor', desc: 'Buy the very first item auctioned', bonus: 300 },
+  { id: 'COMPLETIONIST', title: 'The Completionist', desc: 'Own exactly 3 curated pieces', bonus: 300 },
+  { id: 'WINDOW_SHOPPER', title: 'Window Shopper', desc: 'Bid on 5+ items but win only 1', bonus: 400 },
+  { id: 'LEGEND', title: 'Curator Legend', desc: 'Win the game with 0 Mistakes', bonus: 500 },
+  { id: 'PATRON', title: 'Arts Patron', desc: 'Spend at least $900 total', bonus: 400 },
+  { id: 'MINIMALIST', title: 'Minimalist', desc: 'End the game with exactly 1 piece', bonus: 300 },
+  { id: 'INFLUENCER', title: 'The Influencer', desc: 'Your wing title is voted for', bonus: 300 },
+  { id: 'MERCHANT', title: 'The Merchant', desc: 'Sell one of your drawings for > $300', bonus: 400 },
+  { id: 'FAST_TALKER', title: 'Fast Appraiser', desc: 'Submit appraisal in under 15 seconds', bonus: 200 },
+  { id: 'SKEPTIC', title: 'The Skeptic', desc: 'Never bid more than $200 on any item', bonus: 300 },
+  { id: 'WHALE', title: 'The Whale', desc: 'Hold the highest bid for at least 10 seconds', bonus: 300 },
+  { id: 'CHARITY', title: 'Charity Case', desc: 'Win an auction with a $10 bid', bonus: 500 },
+  { id: 'RIVAL', title: 'The Rival', desc: 'Outbid the same player twice', bonus: 300 },
+  { id: 'SPEEDSTER', title: 'Speed Painter', desc: 'Submit your 3rd drawing first', bonus: 250 },
+  { id: 'OUTSIDER', title: 'Outsider Artist', desc: 'None of your art is bought by others', bonus: 300 },
+  { id: 'ANONYMOUS', title: 'Anonymous', desc: 'Win a vote from a player you outbid', bonus: 400 },
+  { id: 'HIDDEN_GEM', title: 'Hidden Gem', desc: 'Own an item that was nearly a Mistake', bonus: 300 }
 ];
 
 const generateRoomCode = () => Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -146,7 +178,7 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-900 p-2 overflow-hidden">
-      <div className="flex justify-between items-center p-3 bg-slate-800 rounded-2xl mb-2">
+      <div className="flex justify-between items-center p-3 bg-slate-800 rounded-2xl mb-2 shadow-xl">
         <div className="max-w-[70%]">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Sketchpad</p>
           <h2 className="text-lg font-black text-white leading-tight truncate">{prompt}</h2>
@@ -186,7 +218,7 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
             <Trash2 size={24} />
           </button>
         </div>
-        <div className="flex items-center gap-4 bg-slate-800 p-3 rounded-2xl">
+        <div className="flex items-center gap-4 bg-slate-800 p-3 rounded-2xl shadow-inner">
           <input type="range" min="2" max="35" value={thickness} onChange={(e) => setThickness(parseInt(e.target.value))} className="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500" />
           <button onClick={handleSave} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black shadow-lg active:scale-95 transition-all">DONE</button>
         </div>
@@ -374,22 +406,25 @@ export default function App() {
 
   if (view === 'host') {
     return (
-      <div className="min-h-screen bg-slate-100 flex flex-col p-12 overflow-hidden relative">
+      <div 
+        className="min-h-screen flex flex-col p-8 overflow-hidden relative"
+        style={{ backgroundImage: 'url(/wall_texture.png)', backgroundSize: 'cover' }}
+      >
         <div className="flex justify-between items-start z-10">
           <div>
-            <h1 className="text-4xl font-black text-indigo-600 flex items-center gap-3"><ImageIcon size={40}/> MODERN MISTAKES</h1>
-            <p className="text-slate-500 font-bold uppercase tracking-widest text-sm">Main Gallery Display</p>
+            <h1 className="text-4xl font-black text-indigo-400 flex items-center gap-3 drop-shadow-lg"><ImageIcon size={40}/> MODERN MISTAKES</h1>
+            <p className="text-slate-200 font-bold uppercase tracking-widest text-sm drop-shadow-md">Main Gallery Display</p>
           </div>
-          <div className="bg-white p-8 rounded-3xl shadow-2xl border-t-8 border-indigo-600 text-center transform -rotate-2">
-            <p className="text-xs font-black text-slate-400 uppercase tracking-tighter mb-1">Room Code</p>
-            <p className="text-6xl font-black text-slate-900 tracking-tighter leading-none">{room?.id}</p>
+          <div className="bg-white p-6 rounded-3xl shadow-2xl border-t-8 border-indigo-600 text-center transform -rotate-2">
+            <p className="text-xs font-black text-slate-400 uppercase tracking-tighter leading-none mb-1">Join Code</p>
+            <p className="text-5xl font-black text-slate-900 tracking-tighter leading-none">{room?.id}</p>
           </div>
         </div>
 
         <div className="flex-1 flex items-center justify-center">
           {room?.phase === PHASES.LOBBY && (
             <div className="text-center space-y-12 max-w-5xl animate-in zoom-in">
-              <h2 className="text-6xl font-black text-slate-800 drop-shadow-sm italic">Assembling the Elite...</h2>
+              <h2 className="text-6xl font-black text-white drop-shadow-[0_5px_15px_rgba(0,0,0,0.5)] italic">Assembling the Elite...</h2>
               <div className="flex flex-wrap justify-center gap-6">
                 {players.map(p => (
                   <div key={p.id} className="bg-white px-10 py-5 rounded-[2rem] shadow-xl border-b-8 border-indigo-200 font-black text-2xl animate-in slide-in-from-bottom">{p.name}</div>
@@ -401,18 +436,18 @@ export default function App() {
 
           {(room?.phase === PHASES.STUDIO_DRAW || room?.phase === PHASES.STUDIO_APPRAISE) && (
             <div className="text-center space-y-12 animate-in zoom-in">
-              {room.phase === PHASES.STUDIO_DRAW ? <PenTool size={120} className="mx-auto text-indigo-500 animate-bounce" /> : <History size={120} className="mx-auto text-orange-500 animate-spin-slow" />}
-              <h2 className="text-8xl font-black text-slate-900 leading-none">
+              {room.phase === PHASES.STUDIO_DRAW ? <PenTool size={120} className="mx-auto text-indigo-400 animate-bounce" /> : <History size={120} className="mx-auto text-orange-400 animate-spin-slow" />}
+              <h2 className="text-8xl font-black text-white drop-shadow-2xl leading-none">
                 {room.phase === PHASES.STUDIO_DRAW ? "Studio Phase" : "Appraisal Phase"}
               </h2>
-              <p className="text-3xl text-slate-500 font-medium italic">
+              <p className="text-3xl text-slate-300 font-medium italic drop-shadow-lg">
                 {room.phase === PHASES.STUDIO_DRAW ? "Painting for the masses..." : "Writing the history books..."}
               </p>
               <div className="flex flex-wrap justify-center gap-6 pt-8">
                 {players.map(p => (
                    <div key={p.id} className="flex flex-col items-center gap-3">
-                     <div className={`w-12 h-12 rounded-full shadow-2xl border-4 border-white ${p.ready ? 'bg-indigo-600' : 'bg-slate-300'} transition-all transform ${p.ready ? 'scale-110' : ''}`} />
-                     <p className="text-sm font-black text-slate-400 uppercase tracking-tighter">{p.name}</p>
+                     <div className={`w-12 h-12 rounded-full shadow-2xl border-4 border-white ${p.ready ? 'bg-indigo-600' : 'bg-slate-500'} transition-all transform ${p.ready ? 'scale-110' : ''}`} />
+                     <p className="text-sm font-black text-white uppercase tracking-tighter drop-shadow-md">{p.name}</p>
                    </div>
                 ))}
               </div>
@@ -422,21 +457,22 @@ export default function App() {
           {room?.phase === PHASES.AUCTION && (
             room.currentAuction ? (
               <div className="w-full max-w-7xl grid grid-cols-2 gap-20 animate-in fade-in slide-in-from-bottom duration-700 px-8">
-                <div className="bg-white p-12 rounded-[4rem] shadow-2xl space-y-8 border-4 border-white relative overflow-hidden">
-                  <div className="aspect-square bg-slate-50 rounded-[3rem] overflow-hidden shadow-inner flex items-center justify-center border-2 border-slate-100">
-                    <img src={room.currentAuction.item.image} className="max-h-full max-w-full object-contain p-4" />
+                <div className="relative p-10 flex flex-col items-center">
+                  <div className="relative z-10 w-full aspect-square bg-white shadow-2xl flex items-center justify-center overflow-hidden">
+                    <img src={room.currentAuction.item.image} className="max-h-[85%] max-w-[85%] object-contain p-4 z-10" />
+                    <img src="/frame_gold.png" className="absolute inset-0 w-full h-full z-20 pointer-events-none" />
                   </div>
-                  <div className="text-center">
-                    <h3 className="text-6xl font-black text-slate-900 leading-tight">{room.currentAuction.item.title || "Untitled"}</h3>
-                    <p className="text-3xl text-slate-500 mt-4 italic font-medium leading-relaxed">"{room.currentAuction.item.history || "No history available."}"</p>
+                  <div 
+                    className="mt-8 px-12 py-4 flex flex-col items-center justify-center text-center w-full min-h-[120px]"
+                    style={{ backgroundImage: 'url(/brass_plaque.png)', backgroundSize: '100% 100%' }}
+                  >
+                    <h3 className="text-4xl font-black text-slate-800 leading-tight">{room.currentAuction.item.title || "Untitled"}</h3>
+                    <p className="text-lg text-slate-600 italic font-bold leading-relaxed">"{room.currentAuction.item.history || "No history available."}"</p>
                   </div>
                 </div>
                 <div className="flex flex-col justify-center space-y-12">
-                  <div className="p-20 rounded-[4rem] shadow-2xl text-center space-y-8 bg-indigo-900 text-white relative border-b-[20px] border-indigo-950">
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-slate-900 px-12 py-4 rounded-full font-black text-lg uppercase shadow-xl tracking-widest border-4 border-indigo-500">
-                      Standard Auction
-                    </div>
-                    <p className="text-[14rem] font-black tracking-tighter font-mono leading-none">${room.currentAuction.highestBid}</p>
+                  <div className="p-20 rounded-[4rem] shadow-2xl text-center space-y-8 bg-indigo-900/90 text-white relative border-b-[20px] border-indigo-950 border-4 border-indigo-500/50 backdrop-blur-md">
+                    <p className="text-[14rem] font-black tracking-tighter font-mono leading-none drop-shadow-[0_5px_20px_rgba(0,0,0,0.5)]">${room.currentAuction.highestBid}</p>
                     <p className="text-5xl font-black text-indigo-400 uppercase italic tracking-tighter">{room.currentAuction.highestBidderName || "Waiting for bidder..."}</p>
                   </div>
                   <div className="bg-white p-12 rounded-[3rem] shadow-2xl flex items-center justify-between border-b-8 border-slate-200">
@@ -453,8 +489,8 @@ export default function App() {
               </div>
             ) : (
               <div className="text-center space-y-12 animate-pulse">
-                <Gavel size={160} className="mx-auto text-indigo-500" />
-                <h2 className="text-7xl font-black text-slate-800 uppercase italic tracking-[0.2em]">Next Lot Loading...</h2>
+                <Gavel size={160} className="mx-auto text-indigo-400" />
+                <h2 className="text-7xl font-black text-white uppercase italic tracking-[0.2em] drop-shadow-2xl">Next Lot Loading...</h2>
               </div>
             )
           )}
@@ -463,26 +499,27 @@ export default function App() {
             <div className="w-full h-full max-h-[85vh] max-w-[98vw] flex flex-col items-center justify-center animate-in zoom-in duration-700 px-4">
               {players[room.presentingIdx] && (
                 <>
-                  {/* Compact Header */}
                   <div className="text-center mb-6 space-y-1">
-                    <div className="inline-block px-6 py-1 bg-indigo-600 text-white rounded-full font-black text-xs uppercase tracking-widest shadow-lg mb-1">Theme: {room.theme}</div>
-                    <p className="text-slate-400 font-black text-lg uppercase tracking-[0.2em] leading-none mb-1">{players[room.presentingIdx].name}'s Gallery</p>
-                    <h2 className="text-5xl font-black text-slate-900 leading-tight italic">"{players[room.presentingIdx].wingTitle}"</h2>
+                    <div className="inline-block px-10 py-1 bg-indigo-600 text-white rounded-full font-black text-xs uppercase tracking-widest shadow-xl mb-2">Theme: {room.theme}</div>
+                    <p className="text-slate-300 font-black text-xl uppercase tracking-[0.3em] leading-none mb-1 drop-shadow-md">{players[room.presentingIdx].name}'s Gallery</p>
+                    <h2 className="text-5xl font-black text-white leading-tight italic drop-shadow-[0_5px_15px_rgba(0,0,0,0.8)]">"{players[room.presentingIdx].wingTitle}"</h2>
                   </div>
-                  
-                  {/* Single Row Gallery */}
-                  <div className="flex w-full gap-4 justify-center items-start overflow-hidden">
+                  <div className="flex w-full gap-4 justify-center items-start">
                     {items.filter(i => (players[room.presentingIdx].inventory || []).includes(i.id)).map(item => (
-                      <div key={item.id} className="flex-1 max-w-[31%] bg-white p-4 rounded-[2rem] shadow-xl relative border-2 border-white transform transition-transform hover:scale-[1.02]">
-                        {item.returned && (
-                          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 bg-red-600 text-white px-6 py-2 rounded-lg font-black text-3xl border-4 border-white shadow-2xl z-20">MISTAKE!</div>
-                        )}
-                        <div className="bg-slate-50 rounded-2xl p-2 mb-3 shadow-inner">
-                          <img src={item.image} className="w-full h-40 object-contain mx-auto" />
+                      <div key={item.id} className="flex-1 max-w-[31%] flex flex-col items-center transform transition-transform hover:scale-[1.02]">
+                        <div className="relative w-full aspect-square bg-white shadow-2xl flex items-center justify-center overflow-hidden">
+                           <img src={item.image} className="max-h-[85%] max-w-[85%] object-contain p-2 z-10" />
+                           <img src={item.returned ? "/frame_wood.png" : "/frame_gold.png"} className="absolute inset-0 w-full h-full z-20 pointer-events-none" />
+                           {item.returned && (
+                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 bg-red-600 text-white px-8 py-3 rounded-lg font-black text-4xl border-4 border-white shadow-2xl z-30 opacity-90 animate-in zoom-in">MISTAKE!</div>
+                           )}
                         </div>
-                        <div className="px-1">
-                          <h4 className="text-xl font-black text-slate-800 leading-tight mb-1 truncate">{item.title}</h4>
-                          <p className="text-sm text-slate-500 italic font-bold leading-tight border-t pt-2 border-slate-100 line-clamp-3">"{item.history}"</p>
+                        <div 
+                          className="mt-4 px-6 py-3 flex flex-col items-center justify-center text-center w-full min-h-[100px]"
+                          style={{ backgroundImage: 'url(/brass_plaque.png)', backgroundSize: '100% 100%' }}
+                        >
+                          <h4 className="text-xl font-black text-slate-800 leading-tight mb-1 truncate w-full">{item.title}</h4>
+                          <p className="text-xs text-slate-600 italic font-bold leading-tight line-clamp-3">"{item.history}"</p>
                         </div>
                       </div>
                     ))}
@@ -494,7 +531,7 @@ export default function App() {
 
           {room?.phase === PHASES.RESULTS && (
             <div className="w-full max-w-6xl space-y-6 animate-in slide-in-from-bottom">
-              <h2 className="text-[8rem] font-black text-center mb-20 flex items-center justify-center gap-10 leading-none">
+              <h2 className="text-[8rem] font-black text-center mb-16 flex items-center justify-center gap-10 leading-none text-white drop-shadow-2xl">
                 <Trophy className="text-yellow-400" size={150} /> Results
               </h2>
               {[...players].sort((a,b) => {
@@ -521,15 +558,14 @@ export default function App() {
                 if (p.objective?.id === 'THRIFTY' && p.cash > 400) objBonus = 300;
                 const totalScore = (p.cash || 0) + (p.votes || 0) * 200 - mistakePenalty + objBonus;
                 return (
-                  <div key={p.id} className="bg-white p-10 rounded-[3rem] shadow-2xl flex items-center justify-between border-l-[30px] border-indigo-500 transform transition-all hover:-translate-x-6">
+                  <div key={p.id} className="bg-white/95 backdrop-blur-sm p-10 rounded-[3rem] shadow-2xl flex items-center justify-between border-l-[30px] border-indigo-500 transform transition-all hover:-translate-x-6">
                     <div className="flex items-center gap-12">
                       <span className="text-8xl font-black text-slate-200">#{i+1}</span>
                       <div>
                         <h3 className="text-6xl font-black text-slate-800 mb-2">{p.name}</h3>
                         <div className="flex gap-10 text-2xl text-slate-400 font-bold uppercase tracking-widest">
                           <span className="flex items-center gap-2"><Star className="text-indigo-400" /> Votes: {p.votes || 0}</span>
-                          {objBonus > 0 && <span className="text-green-500 flex items-center gap-2"><Target /> {p.objective.title}: +${objBonus}</span>}
-                          <span className="text-red-400">Mistakes: -${mistakePenalty}</span>
+                          {objBonus > 0 && <span className="text-green-600 flex items-center gap-2 font-black"><Target /> {p.objective.title}</span>}
                         </div>
                       </div>
                     </div>
@@ -553,8 +589,11 @@ export default function App() {
   const isPanic = room?.phase === PHASES.AUCTION && (room.currentAuction?.timer || 0) < 5;
 
   return (
-    <div className={`min-h-[100dvh] flex flex-col max-w-md mx-auto relative overflow-hidden font-sans transition-colors duration-200 ${isPanic ? 'bg-red-500 animate-pulse' : 'bg-slate-50'}`}>
-      <div className="bg-slate-900 text-white p-4 flex justify-between items-center z-10 shadow-xl">
+    <div 
+      className={`min-h-[100dvh] flex flex-col max-w-md mx-auto relative overflow-hidden font-sans transition-colors duration-200 ${isPanic ? 'bg-red-500 animate-pulse' : 'bg-slate-50'}`}
+      style={!isPanic ? { backgroundImage: 'url(/paper_texture.png)', backgroundSize: 'cover' } : {}}
+    >
+      <div className="bg-slate-900 text-white p-4 flex justify-between items-center z-10 shadow-xl border-b border-indigo-500/30">
         <div className="flex items-center gap-3">
           <div className="w-14 h-14 rounded-2xl bg-indigo-500 flex items-center justify-center font-black text-3xl shadow-inner shadow-black/30">
             {name ? name[0] : me?.name ? me.name[0] : '?'}
@@ -562,7 +601,7 @@ export default function App() {
           <div>
             <span className="font-black text-lg tracking-tight block leading-none mb-1">{name || me?.name || 'Curator'}</span>
             <div className="flex items-center gap-1 text-[11px] text-slate-500 uppercase font-black tracking-widest">
-              Stock: {me?.inventory?.length || 0}/3
+              Inv: {me?.inventory?.length || 0}/3
             </div>
           </div>
         </div>
@@ -585,7 +624,7 @@ export default function App() {
               <h2 className="text-5xl font-black text-slate-900 uppercase italic tracking-tighter">Joined!</h2>
               {me?.objective && (
                 <div className="bg-white p-6 rounded-[2.5rem] border-4 border-indigo-100 shadow-xl animate-in fade-in slide-in-from-bottom delay-500">
-                  <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-2 flex items-center justify-center gap-2"><Target size={14}/> Secret Endowment</p>
+                  <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-2 flex items-center justify-center gap-2"><Target size={14}/> Secret Mission</p>
                   <h3 className="text-2xl font-black text-slate-800">{me.objective.title}</h3>
                   <p className="text-slate-500 font-bold text-sm italic mt-1">{me.objective.desc}</p>
                 </div>
@@ -597,8 +636,8 @@ export default function App() {
             {me?.ready ? (
               <div className="p-16 text-center space-y-8 flex flex-col items-center justify-center min-h-[60vh] animate-in slide-in-from-bottom">
                 <CheckCircle2 size={140} className="text-indigo-500" />
-                <h3 className="text-4xl font-black text-slate-900 uppercase italic leading-none">Art Delivered</h3>
-                <p className="text-slate-400 font-black tracking-widest uppercase text-xs">Waiting for others to finish their mistakes.</p>
+                <h3 className="text-4xl font-black text-slate-900 uppercase italic leading-none">Art Sent!</h3>
+                <p className="text-slate-500 font-black tracking-widest uppercase text-xs">Wait for the catalog reveal.</p>
               </div>
             ) : (
               <DrawingCanvas key={currentPromptIdx} prompt={PROMPTS[currentPromptIdx % PROMPTS.length]} timeLimit={90} onSave={handleDrawingSubmit} />
@@ -610,28 +649,28 @@ export default function App() {
                <div className="p-16 text-center space-y-8 flex flex-col items-center justify-center min-h-[60vh]">
                  <CheckCircle2 size={140} className="text-indigo-500" />
                  <h3 className="text-4xl font-black text-slate-900 uppercase italic leading-none">Certified!</h3>
-                 <p className="text-slate-400 font-black tracking-widest uppercase text-xs">The catalog is at the printers.</p>
+                 <p className="text-slate-500 font-black tracking-widest uppercase text-xs">Auction is opening...</p>
                </div>
             ) : (
               <>
                 {items.filter(i => i.artistId !== user?.uid && !i.appraised).slice(0, 1).map(item => (
                   <div key={item.id} className="space-y-6 animate-in zoom-in">
                     <div className="text-center">
-                      <h2 className="text-4xl font-black text-slate-900 italic tracking-tighter">APPRAISE</h2>
-                      <p className="text-slate-500 font-black uppercase text-xs tracking-widest mt-1">Assign Name & Significance</p>
+                      <h2 className="text-4xl font-black text-slate-900 italic tracking-tighter uppercase">Appraisal</h2>
+                      <p className="text-slate-500 font-black uppercase text-xs tracking-widest mt-1">Name this masterpiece</p>
                     </div>
                     <div className="aspect-square bg-white rounded-[3.5rem] border-[12px] border-white shadow-2xl overflow-hidden">
                       <img src={item.image} className="w-full h-full object-contain p-2 bg-slate-50" />
                     </div>
                     <div className="space-y-4 pt-4">
-                      <input type="text" id="appraisal-title" placeholder="Give it a title..." className="w-full p-6 bg-white rounded-2xl border-4 border-slate-200 font-black text-2xl outline-none focus:border-indigo-500 shadow-inner" />
-                      <textarea id="appraisal-history" placeholder="Write a short history..." className="w-full p-6 bg-white rounded-2xl border-4 border-slate-200 font-black text-lg outline-none focus:border-indigo-500 h-28 shadow-inner" />
+                      <input type="text" id="appraisal-title" placeholder="Title..." className="w-full p-5 bg-white/80 backdrop-blur-sm rounded-2xl border-4 border-slate-200 font-black text-2xl outline-none focus:border-indigo-500 shadow-inner" />
+                      <textarea id="appraisal-history" placeholder="Short History..." className="w-full p-5 bg-white/80 backdrop-blur-sm rounded-2xl border-4 border-slate-200 font-black text-lg outline-none focus:border-indigo-500 h-28 shadow-inner" />
                       <button onClick={() => {
                           const t = document.getElementById('appraisal-title').value;
                           const h = document.getElementById('appraisal-history').value;
                           if (t && h) submitAppraisal(item.id, t, h);
                         }} className="w-full py-7 bg-indigo-600 text-white rounded-3xl font-black text-3xl shadow-xl active:scale-95 transition-all border-b-8 border-indigo-800 uppercase tracking-tighter"
-                      >Submit Report</button>
+                      >Verify Item</button>
                     </div>
                   </div>
                 ))}
@@ -641,12 +680,12 @@ export default function App() {
         ) : room.phase === PHASES.AUCTION && room.currentAuction ? (
           <div className="p-6 space-y-8 min-h-[85vh] flex flex-col justify-center animate-in fade-in">
             <div className="text-center space-y-1">
-              <p className={`text-xs font-black uppercase tracking-[0.3em] ${isPanic ? 'text-white' : 'text-slate-400'}`}>Auction Block</p>
+              <p className={`text-xs font-black uppercase tracking-[0.3em] ${isPanic ? 'text-white' : 'text-slate-400'}`}>Current Lot</p>
               <h3 className={`text-3xl font-black leading-tight ${isPanic ? 'text-white' : 'text-slate-900'}`}>"{room.currentAuction.item.title || "Unknown Art"}"</h3>
             </div>
 
             <div className={`w-full bg-slate-900 rounded-[4rem] p-12 text-center text-white shadow-2xl relative border-8 ${(me?.inventory?.length || 0) >= 3 ? 'border-red-600' : isPanic ? 'border-white animate-bounce' : 'border-indigo-500'}`}>
-              <p className="text-xs font-black uppercase tracking-widest mb-1 opacity-40">Highest Bid</p>
+              <p className="text-xs font-black uppercase tracking-widest mb-1 opacity-40">Price</p>
               <p className="text-8xl font-black font-mono tracking-tighter leading-none">${room.currentAuction.highestBid}</p>
               <p className="text-indigo-400 mt-6 font-black text-2xl uppercase italic tracking-tighter leading-none">{room.currentAuction.highestBidderName || "NO BIDS"}</p>
               
@@ -654,7 +693,6 @@ export default function App() {
                 <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-8 rounded-[4rem] text-center border-4 border-red-500 animate-in zoom-in">
                   <AlertCircle size={80} className="text-red-500 mb-4" />
                   <p className="font-black text-3xl text-white italic tracking-tighter leading-none uppercase">WING FULL</p>
-                  <p className="text-slate-400 font-bold mt-2 uppercase tracking-widest text-[10px]">No more bidding!</p>
                 </div>
               )}
             </div>
@@ -665,8 +703,7 @@ export default function App() {
                   <button key={amt} disabled={(me?.inventory?.length || 0) >= 3} onClick={() => placeBid((room.currentAuction.highestBid || 0) + amt)} className={`py-6 rounded-3xl font-black text-3xl shadow-xl transition-all border-b-8 active:border-b-0 active:translate-y-2 ${isPanic ? 'bg-white text-red-600 border-slate-200' : 'bg-white text-indigo-600 border-slate-200'}`}>+${amt}</button>
                 ))}
               </div>
-              {/* Refined Bid Button: No random dollar, acts as a "Hammer Bid" (+50) */}
-              <button disabled={(me?.inventory?.length || 0) >= 3} onClick={() => placeBid((room.currentAuction.highestBid || 0) + 50)} className={`w-full py-10 rounded-[3rem] font-black text-5xl shadow-2xl active:scale-95 transition-all border-b-[12px] ${isPanic ? 'bg-white text-red-600 border-slate-200 animate-pulse' : 'bg-indigo-600 text-white border-indigo-800'}`}>PLACE BID</button>
+              <button disabled={(me?.inventory?.length || 0) >= 3} onClick={() => placeBid((room.currentAuction.highestBid || 0) + 50)} className={`w-full py-10 rounded-[3rem] font-black text-5xl shadow-2xl active:scale-95 transition-all border-b-[12px] ${isPanic ? 'bg-white text-red-600 border-slate-200 animate-pulse' : 'bg-indigo-600 text-white border-indigo-800'}`}>HAMMER BID</button>
             </div>
           </div>
         ) : room.phase === PHASES.CURATION ? (
@@ -677,11 +714,11 @@ export default function App() {
             </div>
             <div className="space-y-8">
               <div className="space-y-3">
-                <p className="text-sm font-black text-slate-400 uppercase tracking-widest pl-2">1. Exhibit Name</p>
-                <input type="text" id="w-title" placeholder="A Clever Title..." className="w-full p-6 bg-white rounded-3xl border-4 border-slate-200 font-black text-2xl outline-none focus:border-indigo-500 shadow-inner" />
+                <p className="text-sm font-black text-slate-500 uppercase tracking-widest pl-2">Exhibit Name</p>
+                <input type="text" id="w-title" placeholder="A Clever Title..." className="w-full p-6 bg-white/80 rounded-3xl border-4 border-slate-200 font-black text-2xl outline-none focus:border-indigo-500 shadow-inner" />
               </div>
               <div className="space-y-4">
-                <p className="text-sm font-black text-slate-400 uppercase tracking-widest pl-2 italic">2. Your Collection (All 3 pieces)</p>
+                <p className="text-sm font-black text-slate-500 uppercase tracking-widest pl-2 italic">Your Inventory</p>
                 <div className="grid grid-cols-3 gap-4">
                   {items.filter(i => (me?.inventory || []).includes(i.id)).map(item => (
                     <div key={item.id} className="aspect-square bg-white rounded-3xl border-4 border-indigo-500 overflow-hidden shadow-xl p-1 animate-in zoom-in">
@@ -693,14 +730,14 @@ export default function App() {
               <button onClick={() => {
                 const title = document.getElementById('w-title').value;
                 updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { wingTitle: title || "Modern Art", ready: true });
-              }} className="w-full py-10 bg-indigo-600 text-white rounded-[3rem] font-black text-4xl shadow-2xl border-b-[15px] border-indigo-800 uppercase italic tracking-tighter">Open Exhibit</button>
+              }} className="w-full py-10 bg-indigo-600 text-white rounded-[3rem] font-black text-4xl shadow-2xl border-b-[15px] border-indigo-800 uppercase italic tracking-tighter">Submit Gallery</button>
             </div>
           </div>
         ) : room.phase === PHASES.VOTING && !me?.ready ? (
           <div className="p-8 space-y-8 animate-in slide-in-from-bottom">
             <div className="text-center space-y-1">
               <h2 className="text-5xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">Cast Your Vote</h2>
-              <p className="text-slate-400 font-black uppercase text-xs tracking-widest">Who curated the best wing?</p>
+              <p className="text-slate-500 font-black uppercase text-xs tracking-widest">Who curated the best wing?</p>
             </div>
             <div className="space-y-5">
               {players.filter(p => p.id !== user.uid && p.wingTitle).map(p => (
@@ -731,7 +768,7 @@ export default function App() {
         )}
       </main>
 
-      <div className="bg-white border-t-8 border-slate-200 p-8 flex justify-around items-center text-slate-400 shadow-[0_-20px_50px_rgba(0,0,0,0.1)]">
+      <div className="bg-white/80 backdrop-blur-sm border-t-8 border-slate-200 p-8 flex justify-around items-center text-slate-400 shadow-[0_-20px_50px_rgba(0,0,0,0.1)]">
          <div className={`flex flex-col items-center ${room?.phase?.includes('STUDIO') ? 'text-indigo-600 scale-150' : 'opacity-10'} transition-all duration-500`}><Palette size={35} /></div>
          <div className={`flex flex-col items-center ${room?.phase === PHASES.AUCTION ? 'text-indigo-600 scale-150' : 'opacity-10'} transition-all duration-500`}><Gavel size={35} /></div>
          <div className={`flex flex-col items-center ${room?.phase === PHASES.RESULTS ? 'text-indigo-600 scale-150' : 'opacity-10'} transition-all duration-500`}><Award size={35} /></div>
