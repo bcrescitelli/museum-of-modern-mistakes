@@ -14,7 +14,9 @@ import {
   onSnapshot, 
   collection, 
   arrayUnion, 
-  runTransaction 
+  runTransaction,
+  writeBatch,
+  getDocs
 } from 'firebase/firestore';
 import { 
   Palette, Pencil, Trash2, Users, Timer, 
@@ -24,7 +26,8 @@ import {
   PenTool,
   Star,
   Target,
-  LayoutGrid
+  RefreshCw,
+  Play
 } from 'lucide-react';
 
 // --- Configuration ---
@@ -44,6 +47,7 @@ const db = getFirestore(app);
 
 const PHASES = {
   LOBBY: 'LOBBY',
+  INTRO_VIDEO: 'INTRO_VIDEO',
   STUDIO_DRAW: 'STUDIO_DRAW',
   STUDIO_APPRAISE: 'STUDIO_APPRAISE',
   AUCTION: 'AUCTION',
@@ -304,7 +308,8 @@ export default function App() {
     const isSettled = phaseUptime > 3000;
 
     if (isSettled && players.length > 0 && players.every(p => p.ready)) {
-      if (room.phase === PHASES.STUDIO_DRAW) startPhase(PHASES.STUDIO_APPRAISE);
+      if (room.phase === PHASES.LOBBY) { /* Wait for manual start */ }
+      else if (room.phase === PHASES.STUDIO_DRAW) startPhase(PHASES.STUDIO_APPRAISE);
       else if (room.phase === PHASES.STUDIO_APPRAISE) startPhase(PHASES.AUCTION);
       else if (room.phase === PHASES.CURATION) startPhase(PHASES.PRESENTATION);
       else if (room.phase === PHASES.VOTING) startPhase(PHASES.RESULTS);
@@ -422,7 +427,8 @@ export default function App() {
       theme: THEMES[Math.floor(Math.random() * THEMES.length)], 
       currentAuction: null, 
       phaseStartedAt: Date.now(),
-      gamePrompts: commonPrompts
+      gamePrompts: commonPrompts,
+      videoPlayed: false
     });
     setRoomId(code); setView('host');
   };
@@ -437,6 +443,45 @@ export default function App() {
       name, cash: 1000, inventory: [], ready: false, votes: 0, wingTitle: '', objective 
     });
     setRoomId(code.toUpperCase()); setView('client');
+  };
+
+  const resetRoom = async () => {
+    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+    const itemSnaps = await getDocs(collection(roomRef, 'items'));
+    const batch = writeBatch(db);
+    
+    // Clear subcollections
+    itemSnaps.docs.forEach(d => batch.delete(d.ref));
+    
+    // Reset room state
+    const commonPrompts = [...PROMPTS].sort(() => 0.5 - Math.random()).slice(0, 3);
+    batch.update(roomRef, {
+      phase: PHASES.STUDIO_DRAW,
+      phaseStartedAt: Date.now(),
+      theme: THEMES[Math.floor(Math.random() * THEMES.length)],
+      gamePrompts: commonPrompts,
+      currentAuction: null,
+      videoPlayed: true // Skip video on restart
+    });
+
+    // Reset players
+    players.forEach(p => {
+      const pRef = doc(roomRef, 'players', p.id);
+      const newObjective = OBJECTIVES[Math.floor(Math.random() * OBJECTIVES.length)];
+      batch.update(pRef, {
+        cash: 1000,
+        inventory: [],
+        ready: false,
+        votes: 0,
+        wingTitle: '',
+        objective: newObjective
+      });
+    });
+
+    await batch.commit();
+    setSubmittedCuration(false);
+    setCurationOrder([]);
+    setVoted(false);
   };
 
   const handleDrawingSubmit = async (dataUrl) => {
@@ -467,22 +512,17 @@ export default function App() {
     }
   };
 
-  const toggleItemSelection = (id) => {
-    if (curationOrder.includes(id)) { setCurationOrder(prev => prev.filter(item => item !== id)); } 
-    else if (curationOrder.length < 3) { setCurationOrder(prev => [...prev, id]); }
-  };
-
   // --- Views ---
 
   if (view === 'landing') {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white font-sans">
-        <div className="max-w-2xl w-full space-y-12 text-center animate-in fade-in zoom-in duration-700">
+        <div className="max-w-3xl w-full space-y-12 text-center animate-in fade-in zoom-in duration-700">
           <div className="space-y-4 transform -rotate-1">
             <h1 className="text-6xl sm:text-8xl font-black tracking-tighter text-white drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] leading-tight uppercase italic break-words">Museum of Modern Mistakes</h1>
             <p className="text-xl font-bold text-indigo-400 tracking-[0.2em] uppercase mt-2">Fine Art for Fumbling Curators</p>
           </div>
-          <div className="bg-slate-800 p-8 rounded-[3rem] shadow-2xl border border-slate-700 space-y-6">
+          <div className="bg-slate-800 p-8 rounded-[3.5rem] shadow-2xl border border-slate-700 space-y-6">
             <input type="text" placeholder="Curator Name" className="w-full p-6 bg-slate-900 rounded-2xl border border-slate-700 focus:border-indigo-500 text-xl outline-none transition-all" value={name} onChange={e => setName(e.target.value)} />
             <input type="text" placeholder="Room Code" className="w-full p-6 bg-slate-900 rounded-2xl border border-slate-700 text-center font-mono text-3xl tracking-widest uppercase outline-none transition-all focus:border-indigo-500" value={roomId} onChange={e => setRoomId(e.target.value)} />
             <button onClick={() => joinGame(roomId)} disabled={!name || !roomId} className="w-full py-6 bg-indigo-600 rounded-2xl font-black text-3xl shadow-xl hover:bg-indigo-500 disabled:opacity-50 transition-all border-b-8 border-indigo-800 active:border-b-0 active:translate-y-2 uppercase italic tracking-tighter">Enter Gallery</button>
@@ -518,7 +558,19 @@ export default function App() {
                   <div key={p.id} className="bg-white px-10 py-5 rounded-[2rem] shadow-xl border-b-8 border-indigo-200 font-black text-2xl animate-in slide-in-from-bottom">{p.name}</div>
                 ))}
               </div>
-              {players.length >= 2 && <button onClick={() => startPhase(PHASES.STUDIO_DRAW)} className="px-16 py-6 bg-indigo-600 text-white rounded-[2.5rem] font-black text-4xl shadow-2xl hover:scale-110 transition-transform uppercase tracking-widest border-b-[10px] border-indigo-800">Start Exhibition</button>}
+              {players.length >= 2 && <button onClick={() => startPhase(room.videoPlayed ? PHASES.STUDIO_DRAW : PHASES.INTRO_VIDEO)} className="px-16 py-6 bg-indigo-600 text-white rounded-[2.5rem] font-black text-4xl shadow-2xl hover:scale-110 transition-transform uppercase tracking-widest border-b-[10px] border-indigo-800">Start Exhibition</button>}
+            </div>
+          )}
+
+          {room?.phase === PHASES.INTRO_VIDEO && (
+            <div className="w-full max-w-6xl aspect-video bg-black rounded-[4rem] overflow-hidden shadow-2xl relative border-8 border-white">
+               <video 
+                src="/intro.mp4" 
+                className="w-full h-full object-cover"
+                autoPlay 
+                onEnded={() => startPhase(PHASES.STUDIO_DRAW)}
+               />
+               <button onClick={() => startPhase(PHASES.STUDIO_DRAW)} className="absolute bottom-8 right-8 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white px-8 py-3 rounded-full font-black flex items-center gap-2 transition-all">SKIP VIDEO <ArrowRightLeft size={20}/></button>
             </div>
           )}
 
@@ -609,15 +661,40 @@ export default function App() {
           )}
 
           {room?.phase === PHASES.RESULTS && (
-            <div className="w-full max-w-5xl space-y-6 animate-in slide-in-from-bottom">
-              <h2 className="text-[8rem] font-black text-center mb-16 flex items-center justify-center gap-10 leading-none text-slate-900 drop-shadow-sm uppercase">
+            <div className="w-full max-w-5xl space-y-6 animate-in slide-in-from-bottom flex flex-col items-center">
+              <h2 className="text-[8rem] font-black text-center mb-10 flex items-center justify-center gap-10 leading-none text-slate-900 drop-shadow-sm uppercase">
                 <Trophy className="text-yellow-400" size={150} /> Results
               </h2>
-              {[...players].sort((a,b) => {
-                const getScore = (p) => {
-                  const itemsOwned = items.filter(i => (p.inventory || []).includes(i.id));
+              <div className="w-full space-y-6 max-h-[60vh] overflow-y-auto px-4">
+                {[...players].sort((a,b) => {
+                  const getScore = (p) => {
+                    const itemsOwned = items.filter(i => (p.inventory || []).includes(i.id));
+                    const mistakePenalty = items.filter(i => i.returned && i.artistId === p.id).length * 100;
+                    let objBonus = 0;
+                    if (p.objective?.id === 'HOARDER' && (p.inventory?.length || 0) >= 3) objBonus = 400;
+                    if (p.objective?.id === 'BARGAIN' && itemsOwned.some(i => (i.pricePaid || 0) < 100)) objBonus = 300;
+                    if (p.objective?.id === 'PRODUCER' && items.some(i => i.artistId === p.id && i.ownerId && i.ownerId !== p.id)) objBonus = 300;
+                    if (p.objective?.id === 'FAN_FAVE' && (p.votes || 0) >= 2) objBonus = 500;
+                    if (p.objective?.id === 'THRIFTY' && (p.cash || 0) > 400) objBonus = 300;
+                    if (p.objective?.id === 'HIGHR_ROLLER' && itemsOwned.some(i => (i.pricePaid || 0) > 500)) objBonus = 400;
+                    if (p.objective?.id === 'SILENT_PARTNER' && !itemsOwned.some(i => i.artistId === p.id && !i.returned)) objBonus = 300;
+                    if (p.objective?.id === 'TAX_HAVEN' && (p.cash || 0) === 1000) objBonus = 600;
+                    if (p.objective?.id === 'MASTERMIND' && (p.cash || 0) < 50) objBonus = 500;
+                    if (p.objective?.id === 'COMPLETIONIST' && (p.inventory?.length || 0) === 3) objBonus = 300;
+                    if (p.objective?.id === 'LEGEND' && !items.filter(i => i.artistId === p.id).some(i => i.returned)) objBonus = 500;
+                    if (p.objective?.id === 'PATRON' && (1000 - (p.cash || 0)) >= 900) objBonus = 400;
+                    if (p.objective?.id === 'MINIMALIST' && (p.inventory?.length || 0) === 1) objBonus = 300;
+                    if (p.objective?.id === 'MERCHANT' && items.some(i => i.artistId === p.id && i.pricePaid > 300)) objBonus = 400;
+                    if (p.objective?.id === 'SKEPTIC' && !itemsOwned.some(i => i.pricePaid > 200)) objBonus = 300;
+                    if (p.objective?.id === 'CHARITY' && itemsOwned.some(i => i.pricePaid <= 10)) objBonus = 500;
+                    if (p.objective?.id === 'OUTSIDER' && !items.some(i => i.artistId === p.id && i.ownerId !== p.id && !i.returned)) objBonus = 300;
+                    return (p.cash || 0) + (p.votes || 0) * 200 - mistakePenalty + objBonus;
+                  };
+                  return getScore(b) - getScore(a);
+                }).map((p, i) => {
                   const mistakePenalty = items.filter(i => i.returned && i.artistId === p.id).length * 100;
                   let objBonus = 0;
+                  const itemsOwned = items.filter(i => (p.inventory || []).includes(i.id));
                   if (p.objective?.id === 'HOARDER' && (p.inventory?.length || 0) >= 3) objBonus = 400;
                   if (p.objective?.id === 'BARGAIN' && itemsOwned.some(i => (i.pricePaid || 0) < 100)) objBonus = 300;
                   if (p.objective?.id === 'PRODUCER' && items.some(i => i.artistId === p.id && i.ownerId && i.ownerId !== p.id)) objBonus = 300;
@@ -635,49 +712,25 @@ export default function App() {
                   if (p.objective?.id === 'SKEPTIC' && !itemsOwned.some(i => i.pricePaid > 200)) objBonus = 300;
                   if (p.objective?.id === 'CHARITY' && itemsOwned.some(i => i.pricePaid <= 10)) objBonus = 500;
                   if (p.objective?.id === 'OUTSIDER' && !items.some(i => i.artistId === p.id && i.ownerId !== p.id && !i.returned)) objBonus = 300;
-                  
-                  return (p.cash || 0) + (p.votes || 0) * 200 - mistakePenalty + objBonus;
-                };
-                return getScore(b) - getScore(a);
-              }).map((p, i) => {
-                const mistakePenalty = items.filter(i => i.returned && i.artistId === p.id).length * 100;
-                let objBonus = 0;
-                const itemsOwned = items.filter(i => (p.inventory || []).includes(i.id));
-                if (p.objective?.id === 'HOARDER' && (p.inventory?.length || 0) >= 3) objBonus = 400;
-                if (p.objective?.id === 'BARGAIN' && itemsOwned.some(i => (i.pricePaid || 0) < 100)) objBonus = 300;
-                if (p.objective?.id === 'PRODUCER' && items.some(i => i.artistId === p.id && i.ownerId && i.ownerId !== p.id)) objBonus = 300;
-                if (p.objective?.id === 'FAN_FAVE' && (p.votes || 0) >= 2) objBonus = 500;
-                if (p.objective?.id === 'THRIFTY' && (p.cash || 0) > 400) objBonus = 300;
-                if (p.objective?.id === 'HIGHR_ROLLER' && itemsOwned.some(i => (i.pricePaid || 0) > 500)) objBonus = 400;
-                if (p.objective?.id === 'SILENT_PARTNER' && !itemsOwned.some(i => i.artistId === p.id && !i.returned)) objBonus = 300;
-                if (p.objective?.id === 'TAX_HAVEN' && (p.cash || 0) === 1000) objBonus = 600;
-                if (p.objective?.id === 'MASTERMIND' && (p.cash || 0) < 50) objBonus = 500;
-                if (p.objective?.id === 'COMPLETIONIST' && (p.inventory?.length || 0) === 3) objBonus = 300;
-                if (p.objective?.id === 'LEGEND' && !items.filter(i => i.artistId === p.id).some(i => i.returned)) objBonus = 500;
-                if (p.objective?.id === 'PATRON' && (1000 - (p.cash || 0)) >= 900) objBonus = 400;
-                if (p.objective?.id === 'MINIMALIST' && (p.inventory?.length || 0) === 1) objBonus = 300;
-                if (p.objective?.id === 'MERCHANT' && items.some(i => i.artistId === p.id && i.pricePaid > 300)) objBonus = 400;
-                if (p.objective?.id === 'SKEPTIC' && !itemsOwned.some(i => i.pricePaid > 200)) objBonus = 300;
-                if (p.objective?.id === 'CHARITY' && itemsOwned.some(i => i.pricePaid <= 10)) objBonus = 500;
-                if (p.objective?.id === 'OUTSIDER' && !items.some(i => i.artistId === p.id && i.ownerId !== p.id && !i.returned)) objBonus = 300;
-                
-                const totalScore = (p.cash || 0) + (p.votes || 0) * 200 - mistakePenalty + objBonus;
-                return (
-                  <div key={p.id} className="bg-white p-10 rounded-[3rem] shadow-2xl flex items-center justify-between border-l-[30px] border-indigo-500 transform transition-all hover:-translate-x-6">
-                    <div className="flex items-center gap-12">
-                      <span className="text-8xl font-black text-slate-200">#{i+1}</span>
-                      <div>
-                        <h3 className="text-6xl font-black text-slate-800 mb-2">{p.name}</h3>
-                        <div className="flex gap-10 text-2xl text-slate-400 font-bold uppercase tracking-widest">
-                          <span className="flex items-center gap-2"><Star className="text-indigo-400" /> Votes: {p.votes || 0}</span>
-                          {objBonus > 0 && <span className="text-green-600 flex items-center gap-2 font-black"><Target /> {p.objective.title}</span>}
+                  const totalScore = (p.cash || 0) + (p.votes || 0) * 200 - mistakePenalty + objBonus;
+                  return (
+                    <div key={p.id} className="bg-white p-10 rounded-[3rem] shadow-2xl flex items-center justify-between border-l-[30px] border-indigo-500 transform transition-all hover:-translate-x-6">
+                      <div className="flex items-center gap-12">
+                        <span className="text-8xl font-black text-slate-200">#{i+1}</span>
+                        <div>
+                          <h3 className="text-6xl font-black text-slate-800 mb-2">{p.name}</h3>
+                          <div className="flex gap-10 text-2xl text-slate-400 font-bold uppercase tracking-widest">
+                            <span className="flex items-center gap-2"><Star className="text-indigo-400" /> Votes: {p.votes || 0}</span>
+                            {objBonus > 0 && <span className="text-green-600 flex items-center gap-2 font-black"><Target /> {p.objective.title}</span>}
+                          </div>
                         </div>
                       </div>
+                      <div className="text-9xl font-black text-indigo-600 font-mono tracking-tighter leading-none">${totalScore}</div>
                     </div>
-                    <div className="text-9xl font-black text-indigo-600 font-mono tracking-tighter leading-none">${totalScore}</div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              <button onClick={resetRoom} className="mt-12 px-12 py-6 bg-slate-800 text-white rounded-3xl font-black text-4xl shadow-2xl hover:scale-105 transition-transform flex items-center gap-4 border-b-8 border-slate-950 uppercase italic tracking-widest">Start New Exhibition <RefreshCw size={40}/></button>
             </div>
           )}
         </div>
@@ -695,6 +748,18 @@ export default function App() {
 
   return (
     <div className={`min-h-[100dvh] flex flex-col max-w-md mx-auto relative overflow-hidden font-sans transition-colors duration-200 ${isPanic ? 'bg-red-500 animate-pulse' : 'bg-slate-50'}`}>
+      {/* Secret Mission Banner (Persistent) */}
+      {me?.objective && (
+        <div className="bg-indigo-600 text-white px-4 py-2 flex items-center justify-between shadow-lg z-20 border-b border-indigo-700 animate-in slide-in-from-top">
+          <div className="flex items-center gap-2">
+            <Target size={14} className="text-indigo-200" />
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-80">Mission:</span>
+            <span className="text-xs font-black italic">{me.objective.title}</span>
+          </div>
+          <p className="text-[9px] font-bold opacity-60 truncate ml-4">{me.objective.desc}</p>
+        </div>
+      )}
+
       <div className="bg-slate-900 text-white p-4 flex justify-between items-center z-10 shadow-xl border-b border-indigo-500/30">
         <div className="flex items-center gap-3">
           <div className="w-14 h-14 rounded-2xl bg-indigo-500 flex items-center justify-center font-black text-3xl shadow-inner shadow-black/30">
@@ -722,13 +787,7 @@ export default function App() {
             </div>
             <div className="space-y-4">
               <h2 className="text-5xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">Joined!</h2>
-              {me?.objective && (
-                <div className="bg-white p-6 rounded-[2.5rem] border-4 border-indigo-100 shadow-xl animate-in fade-in slide-in-from-bottom delay-500">
-                  <p className="text-xs font-black text-indigo-600 uppercase tracking-widest mb-2 flex items-center justify-center gap-2"><Target size={14}/> Secret Mission</p>
-                  <h3 className="text-2xl font-black text-slate-800">{me.objective.title}</h3>
-                  <p className="text-slate-500 font-bold text-sm italic mt-1">{me.objective.desc}</p>
-                </div>
-              )}
+              <p className="text-slate-500 font-bold text-lg leading-snug">Exhibition Theme:<br/><span className="text-indigo-600 font-black uppercase italic tracking-tight">{room.theme}</span></p>
             </div>
           </div>
         ) : room.phase === PHASES.STUDIO_DRAW ? (
@@ -762,12 +821,12 @@ export default function App() {
                   <div key={item.id} className="space-y-6 animate-in zoom-in">
                     <div className="text-center">
                       <h2 className="text-4xl font-black text-slate-900 italic tracking-tighter uppercase">Appraisal</h2>
-                      <p className="text-slate-500 font-black uppercase text-xs tracking-widest mt-1">Title & Authenticity</p>
+                      <p className="text-slate-500 font-black uppercase text-xs tracking-widest mt-1">Name this masterpiece</p>
                     </div>
                     <div className="aspect-square bg-white rounded-[3.5rem] border-[12px] border-white shadow-2xl overflow-hidden text-slate-900">
                       <img src={item.image} className="w-full h-full object-contain p-2 bg-slate-50" />
                     </div>
-                    <div className="space-y-4 pt-4">
+                    <div className="space-y-4 pt-4 text-slate-900">
                       <input type="text" id="appraisal-title" placeholder="Title..." className="w-full p-6 bg-white rounded-2xl border-4 border-slate-200 font-black text-2xl outline-none focus:border-indigo-500 shadow-inner" />
                       <textarea id="appraisal-history" placeholder="Write a short history..." className="w-full p-6 bg-white rounded-2xl border-4 border-slate-200 font-black text-lg outline-none focus:border-indigo-500 h-28 shadow-inner" />
                       <button onClick={() => {
@@ -883,7 +942,7 @@ export default function App() {
             ) : (
               <div className="p-16 text-center space-y-8 flex flex-col items-center justify-center min-h-[60vh] animate-in slide-in-from-bottom">
                 <CheckCircle2 size={140} className="text-indigo-500" />
-                <h3 className="text-4xl font-black text-slate-900 uppercase italic leading-none">Gallery Sent!</h3>
+                <h3 className="text-4xl font-black text-slate-900 uppercase italic leading-none text-slate-900">Gallery Sent!</h3>
                 <p className="text-slate-400 font-black tracking-widest uppercase text-xs">Waiting for other curators.</p>
               </div>
             )}
