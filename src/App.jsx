@@ -141,7 +141,7 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
     const context = canvas.getContext("2d");
     context.scale(dpr, dpr);
     context.lineCap = "round";
-    context.lineJoin = "round";
+    context.lineJoin = "round"; // Smoother lines
     context.strokeStyle = color;
     context.lineWidth = thickness;
     
@@ -209,7 +209,7 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
       `}</style>
       <div className="flex justify-between items-center p-3 bg-slate-800 rounded-2xl mb-2 shadow-xl shrink-0">
         <div className="flex-1 pr-4">
-          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest leading-none mb-1">Subject</p>
+          <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest leading-none mb-1 text-white">Subject</p>
           <h2 className="text-sm sm:text-lg font-black text-white leading-tight break-words">{prompt}</h2>
         </div>
         <div className={`px-4 py-2 rounded-xl font-mono text-xl font-bold ${timeLeft < 10 ? 'bg-red-500 animate-pulse' : 'bg-indigo-600'} text-white shrink-0`}>
@@ -217,7 +217,7 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
         </div>
       </div>
       
-      <div ref={containerRef} className="flex-1 relative bg-white rounded-[2rem] shadow-2xl overflow-hidden cursor-crosshair border-8 border-slate-800">
+      <div ref={containerRef} className="flex-1 relative bg-white rounded-[2rem] shadow-2xl overflow-hidden cursor-crosshair border-8 border-slate-800 text-slate-900">
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}
@@ -232,8 +232,8 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
       </div>
 
       <div className="py-4 px-2 space-y-4 shrink-0">
-        <div className="flex justify-between items-center gap-2">
-          <div className="flex gap-2 flex-wrap flex-1">
+        <div className="flex justify-between items-center gap-2 text-white">
+          <div className="flex gap-2 flex-wrap flex-1 text-white">
             {['#000000', '#ef4444', '#3b82f6', '#22c55e', '#facc15', '#f59e0b', '#a855f7', '#ec4899', '#78350f', '#64748b', '#ffffff'].map(c => (
               <button
                 key={c}
@@ -273,7 +273,7 @@ export default function App() {
   const [voted, setVoted] = useState(false);
   const [curationOrder, setCurationOrder] = useState([]);
   const [submittedCuration, setSubmittedCuration] = useState(false);
-  const [isBidding, setIsBidding] = useState(false); // Local bid lock to prevent rapid clicks
+  const [isBidding, setIsBidding] = useState(false);
   const audioRef = useRef(null);
 
   const me = useMemo(() => players.find(p => p.id === user?.uid), [players, user?.uid]);
@@ -308,7 +308,6 @@ export default function App() {
     if (view !== 'client' || room?.phase !== PHASES.STUDIO_APPRAISE || !me || me.ready) return;
     
     const claimItem = async () => {
-      // Find items not by me, not appraised, and either not claimed or claimed by me
       const available = items.filter(i => 
         i.artistId !== user.uid && 
         !i.appraised && 
@@ -328,7 +327,7 @@ export default function App() {
                 transaction.update(itemRef, { appraiserId: user.uid });
               }
             });
-          } catch (e) { /* silent retry */ }
+          } catch (e) { /* retry */ }
         }
       } else if (available.length === 0 && items.length > 0) {
          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true });
@@ -346,11 +345,11 @@ export default function App() {
     const phaseUptime = Date.now() - (room.phaseStartedAt || 0);
     const isSettled = phaseUptime > 3000;
 
+    // Fixed progression logic: Check readiness more atomically
     if (isSettled && players.length > 0 && players.every(p => p.ready)) {
       if (room.phase === PHASES.STUDIO_DRAW) startPhase(PHASES.STUDIO_APPRAISE);
       else if (room.phase === PHASES.STUDIO_APPRAISE) startPhase(PHASES.AUCTION);
       else if (room.phase === PHASES.CURATION) startPhase(PHASES.PRESENTATION);
-      else if (room.phase === PHASES.PRESENTATION) startPhase(PHASES.VOTING);
       else if (room.phase === PHASES.VOTING) startPhase(PHASES.RESULTS);
       return;
     }
@@ -431,41 +430,38 @@ export default function App() {
       presentingIdx: 0,
       presentationTimer: 12
     });
-    players.forEach(p => {
-      batch.update(doc(roomRef, 'players', p.id), { ready: false });
-    });
+    players.forEach(p => { batch.update(doc(roomRef, 'players', p.id), { ready: false }); });
     await batch.commit();
   };
 
   const placeBid = async (amount) => {
     if (isBidding || room.currentAuction?.highestBidder === user.uid) return;
     const auctionItemId = room.currentAuction?.itemId;
-    const me = players.find(p => p.id === user?.uid);
-    if (!room?.currentAuction || !me || (me.inventory?.length || 0) >= 3) return;
-    if (amount > me.cash) return;
+    const curMe = players.find(p => p.id === user?.uid);
+    if (!room?.currentAuction || !curMe || (curMe.inventory?.length || 0) >= 3) return;
+    if (amount > curMe.cash) return;
 
     setIsBidding(true);
     if (navigator.vibrate) navigator.vibrate(50);
 
     try {
       await runTransaction(db, async (transaction) => {
-        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
-        const roomSnap = await transaction.get(roomRef);
-        const current = roomSnap.data().currentAuction;
+        const rRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+        const rSnap = await transaction.get(rRef);
+        const current = rSnap.data().currentAuction;
 
-        // Atomic check: Ensure bidding for correct item and higher than current bid
         if (!current || current.itemId !== auctionItemId || amount <= current.highestBid) {
           throw new Error("Invalid bid state");
         }
 
-        transaction.update(roomRef, {
+        transaction.update(rRef, {
           'currentAuction.highestBid': amount,
           'currentAuction.highestBidder': user.uid,
-          'currentAuction.highestBidderName': name || me.name,
+          'currentAuction.highestBidderName': name || curMe.name,
           'currentAuction.timer': 7 
         });
       });
-    } catch (e) { console.error("Bid failed", e); }
+    } catch (e) { /* silent retry */ }
     setIsBidding(false);
   };
 
@@ -480,13 +476,7 @@ export default function App() {
     const code = generateRoomCode();
     const commonPrompts = [...PROMPTS].sort(() => 0.5 - Math.random()).slice(0, 3);
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code), {
-      hostId: user.uid, 
-      phase: PHASES.LOBBY, 
-      theme: THEMES[Math.floor(Math.random() * THEMES.length)], 
-      currentAuction: null, 
-      phaseStartedAt: Date.now(),
-      gamePrompts: commonPrompts,
-      videoPlayed: false
+      hostId: user.uid, phase: PHASES.LOBBY, theme: THEMES[Math.floor(Math.random() * THEMES.length)], currentAuction: null, phaseStartedAt: Date.now(), gamePrompts: commonPrompts, videoPlayed: false
     });
     setRoomId(code); setView('host');
   };
@@ -496,10 +486,7 @@ export default function App() {
     const snap = await getDoc(roomRef);
     if (!snap.exists()) { setStatusMsg("Invalid Room"); return; }
     const objective = OBJECTIVES[Math.floor(Math.random() * OBJECTIVES.length)];
-    
-    await setDoc(doc(roomRef, 'players', user.uid), { 
-      name, cash: 1000, inventory: [], ready: false, votes: 0, wingTitle: '', objective 
-    });
+    await setDoc(doc(roomRef, 'players', user.uid), { name, cash: 1000, inventory: [], ready: false, votes: 0, wingTitle: '', objective });
     setRoomId(code.toUpperCase()); setView('client');
   };
 
@@ -527,7 +514,6 @@ export default function App() {
   const handleDrawingSubmit = async (dataUrl) => {
     const itemCount = items.filter(i => i.artistId === user.uid).length;
     const prompts = room?.gamePrompts || PROMPTS;
-    
     const itemRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items'));
     await setDoc(itemRef, {
       id: itemRef.id, artistId: user.uid, artistName: name || me?.name, image: dataUrl,
@@ -540,9 +526,7 @@ export default function App() {
   };
 
   const submitAppraisal = async (itemId, title, history) => {
-    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items', itemId), {
-      title, history, appraised: true
-    });
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items', itemId), { title, history, appraised: true });
   };
 
   const toggleItemSelection = (id) => {
@@ -554,18 +538,18 @@ export default function App() {
 
   if (view === 'landing') {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white font-sans">
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white font-sans text-slate-100">
         <div className="max-w-3xl w-full space-y-12 text-center animate-in fade-in zoom-in duration-700">
-          <div className="space-y-4 transform -rotate-1 text-slate-100">
+          <div className="space-y-4 transform -rotate-1 text-slate-100 text-slate-100">
             <h1 className="text-6xl sm:text-8xl font-black tracking-tighter drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] leading-tight uppercase italic break-words">Museum of Modern Mistakes</h1>
             <p className="text-xl font-bold text-indigo-400 tracking-[0.2em] uppercase mt-2">Fine Art for Fumbling Curators</p>
           </div>
-          <div className="bg-slate-800 p-8 rounded-[3rem] shadow-2xl border border-slate-700 space-y-6">
-            <input type="text" placeholder="Curator Name" className="w-full p-6 bg-slate-900 rounded-2xl border border-slate-700 focus:border-indigo-500 text-xl outline-none transition-all" value={name} onChange={e => setName(e.target.value)} />
-            <input type="text" placeholder="Room Code" className="w-full p-6 bg-slate-900 rounded-2xl border border-slate-700 text-center font-mono text-3xl tracking-widest uppercase outline-none transition-all focus:border-indigo-500" value={roomId} onChange={e => setRoomId(e.target.value)} />
-            <button onClick={() => joinGame(roomId)} disabled={!name || !roomId} className="w-full py-6 bg-indigo-600 rounded-2xl font-black text-3xl shadow-xl hover:bg-indigo-500 disabled:opacity-50 transition-all border-b-8 border-indigo-800 active:border-b-0 active:translate-y-2 uppercase italic tracking-tighter">Enter Gallery</button>
+          <div className="bg-slate-800 p-8 rounded-[3rem] shadow-2xl border border-slate-700 space-y-6 text-slate-900">
+            <input type="text" placeholder="Curator Name" className="w-full p-6 bg-slate-900 rounded-2xl border border-slate-700 focus:border-indigo-500 text-xl outline-none transition-all text-white" value={name} onChange={e => setName(e.target.value)} />
+            <input type="text" placeholder="Room Code" className="w-full p-6 bg-slate-900 rounded-2xl border border-slate-700 text-center font-mono text-3xl tracking-widest uppercase outline-none transition-all focus:border-indigo-500 text-white" value={roomId} onChange={e => setRoomId(e.target.value)} />
+            <button onClick={() => joinGame(roomId)} disabled={!name || !roomId} className="w-full py-6 bg-indigo-600 rounded-2xl font-black text-3xl shadow-xl hover:bg-indigo-500 disabled:opacity-50 transition-all border-b-8 border-indigo-800 active:border-b-0 active:translate-y-2 uppercase italic tracking-tighter text-white">Enter Gallery</button>
             <div className="flex items-center gap-4 text-slate-500 py-2"><hr className="flex-1 border-slate-700" /><span>OR</span><hr className="flex-1 border-slate-700" /></div>
-            <button onClick={hostGame} className="w-full py-4 bg-slate-700 rounded-2xl font-bold hover:bg-slate-600 transition-all uppercase tracking-widest">Host Exhibition</button>
+            <button onClick={hostGame} className="w-full py-4 bg-slate-700 rounded-2xl font-bold hover:bg-slate-600 transition-all uppercase tracking-widest text-white text-white">Host Exhibition</button>
           </div>
         </div>
       </div>
@@ -577,14 +561,14 @@ export default function App() {
     const totalToAuction = items.filter(i => i.appraised).length;
 
     return (
-      <div className="min-h-screen flex flex-col p-12 overflow-hidden relative bg-slate-100 font-sans text-slate-900 text-slate-900">
+      <div className="min-h-screen flex flex-col p-12 overflow-hidden relative bg-slate-100 font-sans text-slate-900 text-slate-900 text-slate-900 text-slate-900">
         <div className="flex justify-between items-start z-10">
           <div>
             <h1 className="text-4xl font-black text-indigo-600 flex items-center gap-3 drop-shadow-sm uppercase italic">Museum of Modern Mistakes</h1>
             <p className="text-slate-400 font-bold uppercase tracking-widest text-sm mt-1">Main Gallery Display</p>
           </div>
           <div className="bg-white p-8 rounded-3xl shadow-2xl border-t-8 border-indigo-600 text-center transform -rotate-2">
-            <p className="text-xs font-black text-slate-400 uppercase tracking-tighter mb-1 leading-none">Room Code</p>
+            <p className="text-xs font-black text-slate-400 uppercase tracking-tighter mb-1 leading-none text-slate-400">Room Code</p>
             <p className="text-6xl font-black text-slate-900 tracking-tighter leading-none">{room?.id}</p>
           </div>
         </div>
@@ -595,10 +579,10 @@ export default function App() {
               <h2 className="text-6xl font-black text-slate-800 drop-shadow-sm italic">Assembling the Elite...</h2>
               <div className="flex flex-wrap justify-center gap-6">
                 {players.map(p => (
-                  <div key={p.id} className="bg-white px-10 py-5 rounded-[2rem] shadow-xl border-b-8 border-indigo-200 font-black text-2xl animate-in slide-in-from-bottom text-slate-900">{p.name}</div>
+                  <div key={p.id} className="bg-white px-10 py-5 rounded-[2rem] shadow-xl border-b-8 border-indigo-200 font-black text-2xl animate-in slide-in-from-bottom text-slate-900 text-slate-900">{p.name}</div>
                 ))}
               </div>
-              {players.length >= 2 && <button onClick={() => startPhase(room.videoPlayed ? PHASES.STUDIO_DRAW : PHASES.INTRO_VIDEO)} className="px-16 py-6 bg-indigo-600 text-white rounded-[2.5rem] font-black text-4xl shadow-2xl hover:scale-110 transition-transform uppercase tracking-widest border-b-[10px] border-indigo-800 text-white">Start Exhibition</button>}
+              {players.length >= 2 && <button onClick={() => startPhase(room.videoPlayed ? PHASES.STUDIO_DRAW : PHASES.INTRO_VIDEO)} className="px-16 py-6 bg-indigo-600 text-white rounded-[2.5rem] font-black text-4xl shadow-2xl hover:scale-110 transition-transform uppercase tracking-widest border-b-[10px] border-indigo-800 text-white text-white">Start Exhibition</button>}
             </div>
           )}
 
@@ -610,15 +594,15 @@ export default function App() {
           )}
 
           {(room?.phase === PHASES.STUDIO_DRAW || room?.phase === PHASES.STUDIO_APPRAISE) && (
-            <div className="text-center space-y-12 animate-in zoom-in">
+            <div className="text-center space-y-12 animate-in zoom-in text-slate-900">
               {room.phase === PHASES.STUDIO_DRAW ? <PenTool size={120} className="mx-auto text-indigo-500 animate-bounce" /> : <History size={120} className="mx-auto text-orange-500 animate-spin-slow" />}
-              <h2 className="text-8xl font-black text-slate-900 leading-none uppercase tracking-tighter text-slate-900">{room.phase === PHASES.STUDIO_DRAW ? "Drawing" : "Appraisal"}</h2>
-              <p className="text-3xl text-slate-500 font-medium italic drop-shadow-sm text-slate-500">{room.phase === PHASES.STUDIO_DRAW ? "Painting for the masses..." : "Writing the history books..."}</p>
+              <h2 className="text-8xl font-black text-slate-900 leading-none uppercase tracking-tighter text-slate-900 text-slate-900">{room.phase === PHASES.STUDIO_DRAW ? "Drawing" : "Appraisal"}</h2>
+              <p className="text-3xl text-slate-500 font-medium italic drop-shadow-sm text-slate-500 text-slate-500">{room.phase === PHASES.STUDIO_DRAW ? "Painting for the masses..." : "Writing the history books..."}</p>
               <div className="flex flex-wrap justify-center gap-6 pt-8">
                 {players.map(p => (
                    <div key={p.id} className="flex flex-col items-center gap-3">
                      <div className={`w-12 h-12 rounded-full shadow-2xl border-4 border-white ${p.ready ? 'bg-indigo-600' : 'bg-slate-300'} transition-all transform ${p.ready ? 'scale-110' : ''}`} />
-                     <p className="text-sm font-black text-slate-400 uppercase tracking-tighter text-slate-400">{p.name}</p>
+                     <p className="text-sm font-black text-slate-400 uppercase tracking-tighter text-slate-400 text-slate-400">{p.name}</p>
                    </div>
                 ))}
               </div>
@@ -627,31 +611,31 @@ export default function App() {
 
           {room?.phase === PHASES.AUCTION && (
             room.currentAuction ? (
-              <div className="w-full max-w-7xl grid grid-cols-2 gap-16 animate-in fade-in slide-in-from-bottom duration-700 px-8 text-slate-900">
-                <div className="bg-white p-12 rounded-[4rem] shadow-2xl space-y-8 border-4 border-white relative overflow-hidden flex flex-col items-center text-slate-900">
+              <div className="w-full max-w-7xl grid grid-cols-2 gap-16 animate-in fade-in slide-in-from-bottom duration-700 px-8 text-slate-900 text-slate-900">
+                <div className="bg-white p-12 rounded-[4rem] shadow-2xl space-y-8 border-4 border-white relative overflow-hidden flex flex-col items-center text-slate-900 text-slate-900">
                   <div className="absolute top-6 left-1/2 -translate-x-1/2 bg-indigo-50 text-indigo-600 px-6 py-2 rounded-full font-black text-sm uppercase tracking-widest border border-indigo-100 flex items-center gap-2">
                     <Layers size={16}/> Lot {auctionedCount + 1} of {totalToAuction}
                   </div>
-                  <div className="aspect-square w-full bg-slate-50 rounded-[3rem] overflow-hidden shadow-inner flex items-center justify-center border-2 border-slate-100 text-slate-900 text-slate-900">
-                    <img src={room.currentAuction.item.image} className="max-h-full max-w-full object-contain p-4" />
+                  <div className="aspect-square w-full bg-slate-50 rounded-[3rem] overflow-hidden shadow-inner flex items-center justify-center border-2 border-slate-100 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
+                    <img src={room.currentAuction.item.image} className="max-h-full max-w-full object-contain p-4 text-slate-900" />
                   </div>
-                  <div className="text-center mt-6 text-slate-900">
-                    <h3 className="text-6xl font-black text-slate-900 leading-tight">{room.currentAuction.item.title || "Untitled"}</h3>
-                    <p className="text-2xl text-slate-500 mt-2 italic font-medium leading-relaxed">"{room.currentAuction.item.history || "Wait for the reveal..."}"</p>
+                  <div className="text-center mt-6 text-slate-900 text-slate-900">
+                    <h3 className="text-6xl font-black text-slate-900 leading-tight text-slate-900">{room.currentAuction.item.title || "Untitled"}</h3>
+                    <p className="text-2xl text-slate-500 mt-2 italic font-medium leading-relaxed text-slate-500 text-slate-500">"{room.currentAuction.item.history || "Wait for the reveal..."}"</p>
                   </div>
                 </div>
-                <div className="flex flex-col justify-center space-y-12 text-slate-100">
+                <div className="flex flex-col justify-center space-y-12 text-slate-100 text-slate-100">
                   <div className="p-20 rounded-[4rem] shadow-2xl text-center space-y-8 bg-indigo-900 text-white relative border-b-[20px] border-indigo-950">
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-slate-900 px-12 py-4 rounded-full font-black text-lg uppercase shadow-xl tracking-widest border-4 border-indigo-500 text-slate-900">Standard Auction</div>
-                    <p className="text-[12rem] font-black tracking-tighter font-mono leading-none text-slate-100">${room.currentAuction.highestBid}</p>
-                    <p className="text-5xl font-black text-indigo-400 uppercase italic tracking-tighter">{room.currentAuction.highestBidderName || "NO BIDS"}</p>
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-slate-900 px-12 py-4 rounded-full font-black text-lg uppercase shadow-xl tracking-widest border-4 border-indigo-500 text-slate-900 text-slate-900">Standard Auction</div>
+                    <p className="text-[12rem] font-black tracking-tighter font-mono leading-none text-slate-100 text-slate-100 text-slate-100 text-slate-100">${room.currentAuction.highestBid}</p>
+                    <p className="text-5xl font-black text-indigo-400 uppercase italic tracking-tighter text-indigo-400">{room.currentAuction.highestBidderName || "NO BIDS"}</p>
                   </div>
-                  <div className="bg-white p-10 rounded-[3rem] shadow-2xl flex items-center justify-between border-b-8 border-slate-200 text-slate-900">
+                  <div className="bg-white p-10 rounded-[3rem] shadow-2xl flex items-center justify-between border-b-8 border-slate-200 text-slate-900 text-slate-900">
                     <div className="flex items-center gap-8">
                       <Timer className={`text-slate-300 ${room.currentAuction.timer < 5 ? 'text-red-500 animate-pulse' : ''}`} size={80} />
-                      <span className="text-8xl font-black font-mono text-slate-900 text-slate-900">{(room.currentAuction.timer || 0)}s</span>
+                      <span className="text-8xl font-black font-mono text-slate-900 text-slate-900 text-slate-900 text-slate-900">{(room.currentAuction.timer || 0)}s</span>
                     </div>
-                    <div className="text-right text-slate-900 text-slate-900">
+                    <div className="text-right text-slate-900 text-slate-900 text-slate-900 text-slate-900">
                       <p className="text-sm font-black text-slate-400 uppercase tracking-[0.3em] mb-2">Artist</p>
                       <p className="text-4xl font-black text-slate-800">{room.currentAuction.item.artistName}</p>
                     </div>
@@ -659,34 +643,34 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <div className="text-center space-y-12 animate-pulse text-slate-800">
-                <Gavel size={160} className="mx-auto text-indigo-500" />
-                <h2 className="text-7xl font-black text-slate-800 uppercase italic tracking-[0.2em] text-slate-800">Preparing Next Lot...</h2>
-                <p className="text-3xl font-bold uppercase text-slate-400 tracking-widest">{auctionedCount} sold | {totalToAuction - auctionedCount} remaining</p>
+              <div className="text-center space-y-12 animate-pulse text-slate-800 text-slate-800">
+                <Gavel size={160} className="mx-auto text-indigo-500 text-indigo-500" />
+                <h2 className="text-7xl font-black text-slate-800 uppercase italic tracking-[0.2em] text-slate-800 text-slate-800 text-slate-800">Preparing Next Lot...</h2>
+                <p className="text-3xl font-bold uppercase text-slate-400 tracking-widest text-slate-400 text-slate-400">{auctionedCount} sold | {totalToAuction - auctionedCount} remaining</p>
               </div>
             )
           )}
 
           {room?.phase === PHASES.PRESENTATION && (
-            <div className="w-full h-full max-h-[90vh] flex flex-col items-center justify-center animate-in zoom-in duration-700 px-4 text-slate-900 text-slate-900 text-slate-900">
+            <div className="w-full h-full max-h-[90vh] flex flex-col items-center justify-center animate-in zoom-in duration-700 px-4 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
               {players[room.presentingIdx] && (
                 <>
-                  <div className="text-center mb-6 space-y-1 text-slate-900">
-                    <div className="inline-block px-10 py-1 bg-indigo-600 text-white rounded-full font-black text-sm uppercase tracking-widest shadow-lg mb-2 text-white italic text-white">Theme: {room.theme}</div>
-                    <p className="text-slate-400 font-black text-2xl uppercase tracking-[0.2em] leading-none mb-1 text-slate-400 text-slate-400">{players[room.presentingIdx].name}'s Gallery</p>
-                    <h2 className="text-5xl font-black text-slate-900 leading-tight italic drop-shadow-sm text-slate-900 text-slate-900 text-slate-900 text-slate-900">"{players[room.presentingIdx].wingTitle}"</h2>
+                  <div className="text-center mb-6 space-y-1 text-slate-900 text-slate-900">
+                    <div className="inline-block px-10 py-1 bg-indigo-600 text-white rounded-full font-black text-sm uppercase tracking-widest shadow-lg mb-2 text-white italic text-white text-white text-white">Theme: {room.theme}</div>
+                    <p className="text-slate-400 font-black text-2xl uppercase tracking-[0.2em] leading-none mb-1 text-slate-400 text-slate-400 text-slate-400 text-slate-400">{players[room.presentingIdx].name}'s Gallery</p>
+                    <h2 className="text-5xl font-black text-slate-900 leading-tight italic drop-shadow-sm text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">"{players[room.presentingIdx].wingTitle}"</h2>
                   </div>
-                  <div className="flex w-full gap-8 justify-center items-start px-12 text-slate-900">
+                  <div className="flex w-full gap-8 justify-center items-start px-12 text-slate-900 text-slate-900">
                     {items.filter(i => (players[room.presentingIdx].inventory || []).includes(i.id)).sort((a,b) => (players[room.presentingIdx].inventory.indexOf(a.id) - players[room.presentingIdx].inventory.indexOf(b.id))).map(item => (
-                      <div key={item.id} className="flex-1 max-w-[31%] bg-white p-6 rounded-[3.5rem] shadow-2xl relative border-2 border-white transform transition-transform hover:scale-[1.03] text-slate-900 text-slate-900">
+                      <div key={item.id} className="flex-1 max-w-[31%] bg-white p-6 rounded-[3.5rem] shadow-2xl relative border-2 border-white transform transition-transform hover:scale-[1.03] text-slate-900 text-slate-900 text-slate-900 text-slate-900">
                         {item.returned && (
-                          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 bg-red-600 text-white px-8 py-3 rounded-xl font-black text-4xl border-8 border-white shadow-2xl z-20 opacity-90 animate-in zoom-in uppercase text-white text-white">Mistake!</div>
+                          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 bg-red-600 text-white px-8 py-3 rounded-xl font-black text-4xl border-8 border-white shadow-2xl z-20 opacity-90 animate-in zoom-in uppercase text-white text-white text-white text-white">Mistake!</div>
                         )}
-                        <div className="bg-slate-50 rounded-3xl p-3 mb-6 shadow-inner text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
-                          <img src={item.image} className="w-full h-48 object-contain mx-auto text-slate-900" />
+                        <div className="bg-slate-50 rounded-3xl p-3 mb-6 shadow-inner text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
+                          <img src={item.image} className="w-full h-48 object-contain mx-auto text-slate-900 text-slate-900" />
                         </div>
-                        <h4 className="text-3xl font-black text-slate-800 leading-tight mb-2 truncate text-slate-800 text-slate-800 text-slate-800 text-slate-800">{item.title}</h4>
-                        <p className="text-sm text-slate-500 italic font-bold leading-tight border-t-2 pt-4 border-slate-100 line-clamp-3 text-slate-500 text-slate-500 text-slate-500 text-slate-500">"{item.history}"</p>
+                        <h4 className="text-3xl font-black text-slate-800 leading-tight mb-2 truncate text-slate-800 text-slate-800 text-slate-800 text-slate-800 text-slate-800 text-slate-800">{item.title}</h4>
+                        <p className="text-sm text-slate-500 italic font-bold leading-tight border-t-2 pt-4 border-slate-100 line-clamp-3 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500">"{item.history}"</p>
                       </div>
                     ))}
                   </div>
@@ -696,9 +680,9 @@ export default function App() {
           )}
 
           {room?.phase === PHASES.RESULTS && (
-            <div className="w-full max-w-5xl space-y-6 animate-in slide-in-from-bottom flex flex-col items-center text-slate-900 text-slate-900 text-slate-900">
-              <h2 className="text-[8rem] font-black text-center mb-16 flex items-center justify-center gap-10 leading-none text-slate-900 drop-shadow-sm uppercase text-slate-900 text-slate-900 text-slate-900"><Trophy className="text-yellow-400 text-yellow-400" size={150} /> Results</h2>
-              <div className="w-full space-y-6 max-h-[60vh] overflow-y-auto px-4 text-slate-900">
+            <div className="w-full max-w-5xl space-y-6 animate-in slide-in-from-bottom flex flex-col items-center text-slate-900 text-slate-900 text-slate-900 text-slate-900">
+              <h2 className="text-[8rem] font-black text-center mb-16 flex items-center justify-center gap-10 leading-none text-slate-900 drop-shadow-sm uppercase text-slate-900 text-slate-900 text-slate-900 text-slate-900"><Trophy className="text-yellow-400 text-yellow-400 text-yellow-400" size={150} /> Results</h2>
+              <div className="w-full space-y-6 max-h-[60vh] overflow-y-auto px-4 text-slate-900 text-slate-900">
                 {[...players].sort((a,b) => {
                   const getScore = (p) => {
                     const itemsOwned = items.filter(i => (p.inventory || []).includes(i.id));
@@ -747,26 +731,26 @@ export default function App() {
                   if (p.objective?.id === 'OUTSIDER' && !items.some(i => i.artistId === p.id && i.ownerId !== p.id && !i.returned)) objBonus = 300;
                   const totalScore = (p.cash || 0) + (p.votes || 0) * 200 - mistakePenalty + objBonus;
                   return (
-                    <div key={p.id} className="bg-white p-10 rounded-[3rem] shadow-2xl flex items-center justify-between border-l-[30px] border-indigo-500 transform transition-all hover:-translate-x-6 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
-                      <div className="flex items-center gap-12 text-slate-900">
-                        <span className="text-8xl font-black text-slate-200 text-slate-200 text-slate-200 text-slate-200">#{i+1}</span>
+                    <div key={p.id} className="bg-white p-10 rounded-[3rem] shadow-2xl flex items-center justify-between border-l-[30px] border-indigo-500 transform transition-all hover:-translate-x-6 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
+                      <div className="flex items-center gap-12 text-slate-900 text-slate-900">
+                        <span className="text-8xl font-black text-slate-200 text-slate-200 text-slate-200 text-slate-200 text-slate-200 text-slate-200">#{i+1}</span>
                         <div>
-                          <h3 className="text-6xl font-black text-slate-800 mb-2 text-slate-800 text-slate-800 text-slate-800 text-slate-800">{p.name}</h3>
-                          <div className="flex gap-10 text-2xl text-slate-400 font-bold uppercase tracking-widest text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400"><span className="flex items-center gap-2"><Star className="text-indigo-400 text-indigo-400" /> Votes: {p.votes || 0}</span>{objBonus > 0 && <span className="text-green-600 text-green-600 flex items-center gap-2 font-black text-green-600"><Target text-green-600 /> {p.objective.title}</span>}</div>
+                          <h3 className="text-6xl font-black text-slate-800 mb-2 text-slate-800 text-slate-800 text-slate-800 text-slate-800 text-slate-800 text-slate-800">{p.name}</h3>
+                          <div className="flex gap-10 text-2xl text-slate-400 font-bold uppercase tracking-widest text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400"><span className="flex items-center gap-2 text-indigo-400 text-indigo-400"><Star className="text-indigo-400 text-indigo-400" /> Votes: {p.votes || 0}</span>{objBonus > 0 && <span className="text-green-600 text-green-600 text-green-600 flex items-center gap-2 font-black text-green-600 text-green-600"><Target className="text-green-600" /> {p.objective.title}</span>}</div>
                         </div>
                       </div>
-                      <div className="text-9xl font-black text-indigo-600 font-mono tracking-tighter leading-none text-indigo-600 text-indigo-600 text-indigo-600">${totalScore}</div>
+                      <div className="text-9xl font-black text-indigo-600 font-mono tracking-tighter leading-none text-indigo-600 text-indigo-600 text-indigo-600 text-indigo-600">${totalScore}</div>
                     </div>
                   );
                 })}
               </div>
-              <button onClick={resetRoom} className="mt-12 px-12 py-6 bg-slate-800 text-white rounded-3xl font-black text-4xl shadow-2xl hover:scale-105 transition-transform flex items-center gap-4 border-b-8 border-slate-950 uppercase italic tracking-widest text-white text-white text-white text-white">Start New Exhibition <RefreshCw size={40}/></button>
+              <button onClick={resetRoom} className="mt-12 px-12 py-6 bg-slate-800 text-white rounded-3xl font-black text-4xl shadow-2xl hover:scale-105 transition-transform flex items-center gap-4 border-b-8 border-slate-950 uppercase italic tracking-widest text-white text-white text-white text-white text-white text-white text-white">Start New Exhibition <RefreshCw size={40}/></button>
             </div>
           )}
         </div>
 
-        <button onClick={() => setIsMuted(!isMuted)} className="absolute bottom-12 right-12 bg-white p-8 rounded-full shadow-2xl text-slate-600 z-50 hover:scale-110 transition-transform text-slate-600 text-slate-600 text-slate-600">
-          {isMuted ? <VolumeX size={50} size={50} /> : <Volume2 size={50} size={50} />}
+        <button onClick={() => setIsMuted(!isMuted)} className="absolute bottom-12 right-12 bg-white p-8 rounded-full shadow-2xl text-slate-600 z-50 hover:scale-110 transition-transform text-slate-600 text-slate-600 text-slate-600 text-slate-600">
+          {isMuted ? <VolumeX size={50} /> : <Volume2 size={50} />}
         </button>
       </div>
     );
@@ -779,58 +763,58 @@ export default function App() {
     <div className={`min-h-[100dvh] flex flex-col max-w-md mx-auto relative overflow-hidden font-sans transition-colors duration-200 ${isPanicClient ? 'bg-red-500 animate-pulse' : 'bg-slate-50'}`}>
       {/* Secret Mission Banner (Persistent) */}
       {me?.objective && (
-        <div className="bg-indigo-600 text-white px-4 py-2 flex items-start justify-between shadow-lg z-20 border-b border-indigo-700 animate-in slide-in-from-top shrink-0 text-white text-white">
-          <div className="flex items-start gap-2 text-white">
-            <Target size={14} className="text-indigo-200 text-indigo-200 mt-1 shrink-0" />
-            <div className="flex flex-col text-white">
-              <div className="flex items-center gap-1 text-white">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-80 text-white">Mission:</span>
-                <span className="text-xs font-black italic text-white text-white">{me.objective.title}</span>
+        <div className="bg-indigo-600 text-white px-4 py-2 flex items-start justify-between shadow-lg z-20 border-b border-indigo-700 animate-in slide-in-from-top shrink-0 text-white text-white text-white">
+          <div className="flex items-start gap-2 text-white text-white">
+            <Target size={14} className="text-indigo-200 text-indigo-200 text-indigo-200 mt-1 shrink-0" />
+            <div className="flex flex-col text-white text-white">
+              <div className="flex items-center gap-1 text-white text-white">
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-80 text-white text-white">Mission:</span>
+                <span className="text-xs font-black italic text-white text-white text-white text-white">{me.objective.title}</span>
               </div>
-              <p className="text-[10px] font-bold opacity-80 leading-tight mt-0.5 text-white">{me.objective.desc}</p>
+              <p className="text-[10px] font-bold opacity-80 leading-tight mt-0.5 text-white text-white">{me.objective.desc}</p>
             </div>
           </div>
         </div>
       )}
 
-      <div className="bg-slate-900 text-white p-4 flex justify-between items-center z-10 shadow-xl border-b border-indigo-500/30 shrink-0 text-slate-100 text-white text-white">
-        <div className="flex items-center gap-3 text-slate-100 text-white text-white text-white">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-500 flex items-center justify-center font-black text-3xl shadow-inner shadow-black/30 text-white text-white text-white">{name ? name[0] : me?.name ? me.name[0] : '?'}</div>
-          <div>
-            <span className="font-black text-lg tracking-tight block leading-none mb-1 truncate max-w-[80px] text-white">{name || me?.name || 'Curator'}</span>
-            <div className="flex items-center gap-1 text-[11px] text-slate-500 uppercase font-black tracking-widest text-slate-500 text-slate-500">Inv: {me?.inventory?.length || 0}/3</div>
+      <div className="bg-slate-900 text-white p-4 flex justify-between items-center z-10 shadow-xl border-b border-indigo-500/30 shrink-0 text-slate-100 text-white text-white text-white">
+        <div className="flex items-center gap-3 text-slate-100 text-white text-white text-white text-white">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-500 flex items-center justify-center font-black text-3xl shadow-inner shadow-black/30 text-white text-white text-white text-white">{name ? name[0] : me?.name ? me.name[0] : '?'}</div>
+          <div className="text-white text-white">
+            <span className="font-black text-lg tracking-tight block leading-none mb-1 truncate max-w-[80px] text-white text-white">{name || me?.name || 'Curator'}</span>
+            <div className="flex items-center gap-1 text-[11px] text-slate-500 uppercase font-black tracking-widest text-slate-500 text-slate-500 text-slate-500">Inv: {me?.inventory?.length || 0}/3</div>
           </div>
         </div>
-        <div className="flex items-center gap-3 bg-slate-800 px-6 py-3 rounded-2xl border border-slate-700 shadow-inner text-slate-100 text-white">
-          <Coins size={24} className="text-yellow-400 text-yellow-400" />
-          <span className="font-mono font-black text-2xl tracking-tighter leading-none text-white text-white text-white text-white text-white">${me?.cash || 0}</span>
+        <div className="flex items-center gap-3 bg-slate-800 px-6 py-3 rounded-2xl border border-slate-700 shadow-inner text-slate-100 text-white text-white">
+          <Coins size={24} className="text-yellow-400 text-yellow-400 text-yellow-400" />
+          <span className="font-mono font-black text-2xl tracking-tighter leading-none text-white text-white text-white text-white text-white text-white">${me?.cash || 0}</span>
         </div>
       </div>
 
-      <main className="flex-1 overflow-y-auto pb-24 text-slate-900">
+      <main className="flex-1 overflow-y-auto pb-24 text-slate-900 text-slate-900">
         {!room ? (
           <div className="p-16 text-center text-slate-400 font-black uppercase tracking-widest animate-pulse">Connecting...</div>
         ) : room.phase === PHASES.LOBBY ? (
           <div className="p-8 text-center space-y-10 flex flex-col items-center justify-center min-h-[60vh]">
-            <div className="relative"><Users size={120} className="text-indigo-500 text-indigo-500 animate-pulse text-indigo-500" /><div className="absolute -top-2 -right-2 bg-red-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-black shadow-lg">!</div></div>
-            <div className="space-y-4">
-              <h2 className="text-5xl font-black text-slate-900 uppercase italic tracking-tighter leading-none text-slate-900 text-slate-900 text-slate-900">Joined!</h2>
-              <p className="text-slate-500 font-bold text-lg leading-snug text-slate-500 text-slate-500 text-slate-500">Exhibition Theme:<br/><span className="text-indigo-600 font-black uppercase italic tracking-tight text-indigo-600">{room.theme}</span></p>
+            <div className="relative"><Users size={120} className="text-indigo-500 text-indigo-500 text-indigo-500 animate-pulse text-indigo-500 text-indigo-500" /><div className="absolute -top-2 -right-2 bg-red-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-black shadow-lg">!</div></div>
+            <div className="space-y-4 text-slate-900">
+              <h2 className="text-5xl font-black text-slate-900 uppercase italic tracking-tighter leading-none text-slate-900 text-slate-900 text-slate-900 text-slate-900">Joined!</h2>
+              <p className="text-slate-500 font-bold text-lg leading-snug text-slate-500 text-slate-500 text-slate-500 text-slate-500">Exhibition Theme:<br/><span className="text-indigo-600 font-black uppercase italic tracking-tight text-indigo-600 text-indigo-600">{room.theme}</span></p>
             </div>
           </div>
         ) : room.phase === PHASES.INTRO_VIDEO ? (
-          <div className="p-12 text-center space-y-8 flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in shrink-0">
-             <Play size={100} className="text-indigo-500 text-indigo-500 animate-bounce text-indigo-500" />
-             <h3 className="text-3xl font-black text-slate-900 uppercase italic leading-tight text-slate-900 text-slate-900">Rules Briefing</h3>
-             <p className="text-slate-500 font-bold uppercase tracking-widest text-xs text-slate-500 text-slate-500">Watch the main screen for instructions.</p>
+          <div className="p-12 text-center space-y-8 flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in shrink-0 text-slate-900">
+             <Play size={100} className="text-indigo-500 text-indigo-500 text-indigo-500 animate-bounce text-indigo-500 text-indigo-500" />
+             <h3 className="text-3xl font-black text-slate-900 uppercase italic leading-tight text-slate-900 text-slate-900 text-slate-900">Rules Briefing</h3>
+             <p className="text-slate-500 font-bold uppercase tracking-widest text-xs text-slate-500 text-slate-500 text-slate-500">Watch the main screen for instructions.</p>
           </div>
         ) : room.phase === PHASES.STUDIO_DRAW ? (
           <>
             {me?.ready ? (
-              <div className="p-16 text-center space-y-8 flex flex-col items-center justify-center min-h-[60vh] animate-in slide-in-from-bottom shrink-0">
-                <CheckCircle2 size={140} className="text-indigo-500 text-indigo-500" />
-                <h3 className="text-4xl font-black text-slate-900 uppercase italic leading-none text-slate-900 text-slate-900 text-slate-900 text-slate-900">Art Delivered</h3>
-                <p className="text-slate-400 font-black tracking-widest uppercase text-xs text-slate-900 text-slate-400 text-slate-400">Waiting for curators...</p>
+              <div className="p-16 text-center space-y-8 flex flex-col items-center justify-center min-h-[60vh] animate-in slide-in-from-bottom shrink-0 text-slate-900">
+                <CheckCircle2 size={140} className="text-indigo-500 text-indigo-500 text-indigo-500" />
+                <h3 className="text-4xl font-black text-slate-900 uppercase italic leading-none text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">Art Delivered</h3>
+                <p className="text-slate-400 font-black tracking-widest uppercase text-xs text-slate-900 text-slate-400 text-slate-400 text-slate-400 text-slate-400">Waiting for curators...</p>
               </div>
             ) : (
               <DrawingCanvas 
@@ -842,109 +826,109 @@ export default function App() {
             )}
           </>
         ) : room.phase === PHASES.STUDIO_APPRAISE ? (
-          <div className="p-6 space-y-6 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
+          <div className="p-6 space-y-6 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
             {me?.ready ? (
-               <div className="p-16 text-center space-y-8 flex flex-col items-center justify-center min-h-[60vh] shrink-0">
-                 <CheckCircle2 size={140} className="text-indigo-500 text-indigo-500" />
-                 <h3 className="text-4xl font-black text-slate-900 uppercase italic leading-none text-slate-900 text-slate-900 text-slate-900 text-slate-900">Certified!</h3>
-                 <p className="text-slate-400 font-black tracking-widest uppercase text-xs text-slate-900 text-slate-400 text-slate-400">Auction is opening...</p>
+               <div className="p-16 text-center space-y-8 flex flex-col items-center justify-center min-h-[60vh] shrink-0 text-slate-900">
+                 <CheckCircle2 size={140} className="text-indigo-500 text-indigo-500 text-indigo-500" />
+                 <h3 className="text-4xl font-black text-slate-900 uppercase italic leading-none text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">Certified!</h3>
+                 <p className="text-slate-400 font-black tracking-widest uppercase text-xs text-slate-900 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400">Auction is opening...</p>
                </div>
             ) : (
               <>
                 {items.filter(i => i.artistId !== user?.uid && !i.appraised && (i.appraiserId === user.uid || !i.appraiserId)).slice(0, 1).map(item => (
-                  <div key={item.id} className="space-y-6 animate-in zoom-in">
-                    <div className="text-center text-slate-900 text-slate-900">
-                      <h2 className="text-4xl font-black text-slate-900 italic tracking-tighter uppercase leading-none text-slate-900">Appraisal</h2>
-                      <p className="text-slate-500 font-black uppercase text-xs tracking-widest mt-1 text-slate-500">Name this masterpiece</p>
+                  <div key={item.id} className="space-y-6 animate-in zoom-in text-slate-900">
+                    <div className="text-center text-slate-900 text-slate-900 text-slate-900">
+                      <h2 className="text-4xl font-black text-slate-900 italic tracking-tighter uppercase leading-none text-slate-900 text-slate-900">Appraisal</h2>
+                      <p className="text-slate-500 font-black uppercase text-xs tracking-widest mt-1 text-slate-500 text-slate-500">Name this masterpiece</p>
                     </div>
                     <div className="aspect-square bg-white rounded-[3.5rem] border-[12px] border-white shadow-2xl overflow-hidden text-slate-900">
-                      <img src={item.image} className="w-full h-full object-contain p-2 bg-slate-50 text-slate-900" />
+                      <img src={item.image} className="w-full h-full object-contain p-2 bg-slate-50 text-slate-900 text-slate-900 text-slate-900" />
                     </div>
                     <div className="space-y-4 pt-4 text-slate-900">
-                      <input type="text" id="appraisal-title" placeholder="Title..." className="w-full p-6 bg-white rounded-2xl border-4 border-slate-200 font-black text-2xl outline-none focus:border-indigo-500 shadow-inner text-slate-900 text-slate-900" />
-                      <textarea id="appraisal-history" placeholder="Write a short history..." className="w-full p-6 bg-white rounded-2xl border-4 border-slate-200 font-black text-lg outline-none focus:border-indigo-500 h-28 shadow-inner text-slate-900 text-slate-900" />
+                      <input type="text" id="appraisal-title" placeholder="Title..." className="w-full p-6 bg-white rounded-2xl border-4 border-slate-200 font-black text-2xl outline-none focus:border-indigo-500 shadow-inner text-slate-900 text-slate-900 text-slate-900 text-slate-900" />
+                      <textarea id="appraisal-history" placeholder="Write a short history..." className="w-full p-6 bg-white rounded-2xl border-4 border-slate-200 font-black text-lg outline-none focus:border-indigo-500 h-28 shadow-inner text-slate-900 text-slate-900 text-slate-900 text-slate-900" />
                       <button onClick={() => {
                           const t = document.getElementById('appraisal-title').value;
                           const h = document.getElementById('appraisal-history').value;
                           if (t && h) submitAppraisal(item.id, t, h);
-                        }} className="w-full py-7 bg-indigo-600 text-white rounded-3xl font-black text-3xl shadow-xl active:scale-95 transition-all border-b-8 border-indigo-800 uppercase tracking-tighter text-white text-white text-white text-white"
+                        }} className="w-full py-7 bg-indigo-600 text-white rounded-3xl font-black text-3xl shadow-xl active:scale-95 transition-all border-b-8 border-indigo-800 uppercase tracking-tighter text-white text-white text-white text-white text-white text-white"
                       >Verify Item</button>
                     </div>
                   </div>
                 ))}
                 {items.filter(i => i.artistId !== user?.uid && !i.appraised && (i.appraiserId === user.uid || !i.appraiserId)).length === 0 && (
                   <div className="p-16 text-center space-y-8 flex flex-col items-center justify-center min-h-[60vh] shrink-0 text-slate-900">
-                    <CheckCircle2 size={140} className="text-indigo-500 text-indigo-500 animate-pulse text-indigo-500" />
-                    <h3 className="text-2xl font-black text-slate-400 uppercase italic text-slate-400 text-slate-400">Waiting for lots...</h3>
+                    <CheckCircle2 size={140} className="text-indigo-500 text-indigo-500 text-indigo-500 animate-pulse text-indigo-500 text-indigo-500" />
+                    <h3 className="text-2xl font-black text-slate-400 uppercase italic text-slate-400 text-slate-400 text-slate-400">Waiting for lots...</h3>
                   </div>
                 )}
               </>
             )}
           </div>
         ) : room.phase === PHASES.AUCTION && room.currentAuction ? (
-          <div className="p-6 space-y-8 min-h-[85vh] flex flex-col justify-center animate-in fade-in shrink-0 text-slate-900 text-slate-900">
-            <div className="text-center space-y-1 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
+          <div className="p-6 space-y-8 min-h-[85vh] flex flex-col justify-center animate-in fade-in shrink-0 text-slate-900 text-slate-900 text-slate-900">
+            <div className="text-center space-y-1 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
               <p className={`text-xs font-black uppercase tracking-[0.3em] ${isPanicClient ? 'text-white' : 'text-slate-400'}`}>Current Lot</p>
               <h3 className={`text-3xl font-black leading-tight ${isPanicClient ? 'text-white' : 'text-slate-900'}`}>"{room.currentAuction.item.title || "Unknown Art"}"</h3>
             </div>
             <div className={`w-full bg-slate-900 rounded-[4rem] p-12 text-center text-white shadow-2xl relative border-8 ${(me?.inventory?.length || 0) >= 3 ? 'border-red-600' : isPanicClient ? 'border-white animate-bounce' : 'border-indigo-500'}`}>
-              <p className="text-xs font-black uppercase tracking-widest mb-1 opacity-40 leading-none text-white">Price</p>
-              <p className="text-8xl font-black font-mono tracking-tighter leading-none text-white text-white">${room.currentAuction.highestBid}</p>
-              <p className="text-indigo-400 mt-6 font-black text-2xl uppercase italic tracking-tighter leading-none text-indigo-400">{room.currentAuction.highestBidderName || "NO BIDS"}</p>
+              <p className="text-xs font-black uppercase tracking-widest mb-1 opacity-40 leading-none text-white text-white">Price</p>
+              <p className="text-8xl font-black font-mono tracking-tighter leading-none text-white text-white text-white text-white text-white">${room.currentAuction.highestBid}</p>
+              <p className="text-indigo-400 mt-6 font-black text-2xl uppercase italic tracking-tighter leading-none text-indigo-400 text-indigo-400">{room.currentAuction.highestBidderName || "NO BIDS"}</p>
               {(me?.inventory?.length || 0) >= 3 && (
-                <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-8 rounded-[4rem] text-center border-4 border-red-500 animate-in zoom-in text-white"><AlertCircle size={80} className="text-red-500 text-red-500 mb-4 text-red-500" /><p className="font-black text-3xl text-white italic tracking-tighter leading-none uppercase text-center shrink-0 text-white text-white">GALLERY<br/>FULL</p></div>
+                <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-8 rounded-[4rem] text-center border-4 border-red-500 animate-in zoom-in text-white text-white"><AlertCircle size={80} className="text-red-500 text-red-500 text-red-500 mb-4 text-red-500 text-red-500 text-red-500" /><p className="font-black text-3xl text-white italic tracking-tighter leading-none uppercase text-center shrink-0 text-white text-white text-white text-white">GALLERY<br/>FULL</p></div>
               )}
             </div>
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4 text-white text-white text-white text-white">
+            <div className="space-y-5 text-slate-900">
+              <div className="grid grid-cols-2 gap-4 text-white text-white text-white text-white text-white text-white">
                 {[10, 25, 50, 75].map(amt => (
-                  <button key={amt} disabled={isBidding || (me?.inventory?.length || 0) >= 3 || room.currentAuction.highestBidder === user.uid} onClick={() => placeBid((room.currentAuction.highestBid || 0) + amt)} className={`py-6 rounded-3xl font-black text-4xl shadow-xl transition-all border-b-8 active:border-b-0 active:translate-y-2 bg-white text-indigo-600 border-slate-200 text-indigo-600 text-indigo-600 text-indigo-600 text-indigo-600 disabled:opacity-50`}>+${amt}</button>
+                  <button key={amt} disabled={isBidding || (me?.inventory?.length || 0) >= 3 || room.currentAuction.highestBidder === user.uid} onClick={() => placeBid((room.currentAuction.highestBid || 0) + amt)} className={`py-6 rounded-3xl font-black text-4xl shadow-xl transition-all border-b-8 active:border-b-0 active:translate-y-2 bg-white text-indigo-600 border-slate-200 text-indigo-600 text-indigo-600 text-indigo-600 text-indigo-600 text-indigo-600 text-indigo-600 text-indigo-600 disabled:opacity-50`}>+${amt}</button>
                 ))}
               </div>
             </div>
           </div>
         ) : room.phase === PHASES.CURATION ? (
-          <div className="p-8 space-y-6 animate-in slide-in-from-right text-slate-900 shrink-0 text-slate-900 text-slate-900 text-slate-900">
+          <div className="p-8 space-y-6 animate-in slide-in-from-right text-slate-900 shrink-0 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
             {!submittedCuration ? (
               <>
-                <div className="bg-indigo-600 text-white p-6 rounded-[2rem] space-y-2 shadow-2xl border-b-[8px] border-indigo-800 shrink-0 text-white text-white text-white"><p className="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none text-white">Theme</p><h2 className="text-2xl font-black leading-tight italic uppercase tracking-tighter text-white text-white text-white text-white text-white">{room.theme}</h2></div>
-                <div className="space-y-6 flex-1 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
-                  <div className="space-y-2 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><p className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1 leading-none text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400">1. Wing Name</p><input type="text" id="w-title" placeholder="A Clever Title..." className="w-full p-5 bg-white rounded-3xl border-4 border-slate-200 font-black text-xl outline-none focus:border-indigo-500 shadow-inner text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900" /></div>
-                  <div className="space-y-3 text-slate-900 text-slate-900">
-                    <div className="flex justify-between items-end px-1 text-slate-900 text-slate-900"><p className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none text-slate-400 text-slate-400 text-slate-400 text-slate-400">2. Set Display Order</p><button onClick={() => setCurationOrder([])} className="text-[10px] font-black text-indigo-500 uppercase underline text-indigo-500">Reset</button></div>
-                    <div className="grid grid-cols-3 gap-3">
+                <div className="bg-indigo-600 text-white p-6 rounded-[2rem] space-y-2 shadow-2xl border-b-[8px] border-indigo-800 shrink-0 text-white text-white text-white text-white text-white"><p className="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none text-white text-white">Theme</p><h2 className="text-2xl font-black leading-tight italic uppercase tracking-tighter text-white text-white text-white text-white text-white text-white text-white">{room.theme}</h2></div>
+                <div className="space-y-6 flex-1 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
+                  <div className="space-y-2 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><p className="text-xs font-black text-slate-400 uppercase tracking-widest pl-1 leading-none text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400">1. Wing Name</p><input type="text" id="w-title" placeholder="A Clever Title..." className="w-full p-5 bg-white rounded-3xl border-4 border-slate-200 font-black text-xl outline-none focus:border-indigo-500 shadow-inner text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900" /></div>
+                  <div className="space-y-3 text-slate-900 text-slate-900 text-slate-900">
+                    <div className="flex justify-between items-end px-1 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><p className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400">2. Set Display Order</p><button onClick={() => setCurationOrder([])} className="text-[10px] font-black text-indigo-500 uppercase underline text-indigo-500 text-indigo-500">Reset</button></div>
+                    <div className="grid grid-cols-3 gap-3 text-slate-900">
                       {items.filter(i => (me?.inventory || []).includes(i.id)).map(item => {
                         const orderIndex = curationOrder.indexOf(item.id);
                         return (
-                          <div key={item.id} onClick={() => toggleItemSelection(item.id)} className={`aspect-square rounded-2xl border-4 transition-all relative overflow-hidden bg-white shadow-md ${orderIndex !== -1 ? 'border-indigo-600 scale-95' : 'border-slate-200 opacity-60'}`}><img src={item.image} className="w-full h-full object-contain text-slate-900" />{orderIndex !== -1 && (<div className="absolute top-2 right-2 bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shadow-lg text-white text-white text-white">{orderIndex + 1}</div>)}</div>
+                          <div key={item.id} onClick={() => toggleItemSelection(item.id)} className={`aspect-square rounded-2xl border-4 transition-all relative overflow-hidden bg-white shadow-md ${orderIndex !== -1 ? 'border-indigo-600 scale-95' : 'border-slate-200 opacity-60'}`}><img src={item.image} className="w-full h-full object-contain text-slate-900 text-slate-900" />{orderIndex !== -1 && (<div className="absolute top-2 right-2 bg-indigo-600 text-white w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shadow-lg text-white text-white text-white text-white text-white text-white">{orderIndex + 1}</div>)}</div>
                         );
                       })}
                     </div>
                   </div>
-                  <button onClick={() => { const titleInput = document.getElementById('w-title'); const title = titleInput ? titleInput.value : "Exhibition"; const finalOrder = curationOrder.length > 0 ? curationOrder : (me?.inventory || []); updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { wingTitle: title || "Exhibition", inventory: finalOrder, ready: true }); setSubmittedCuration(true); }} className="w-full py-8 bg-indigo-600 text-white rounded-[2.5rem] font-black text-3xl shadow-xl border-b-[10px] border-indigo-800 uppercase italic tracking-tighter active:scale-95 transition-all text-white text-white text-white text-white text-white text-white">Open Gallery</button>
+                  <button onClick={() => { const titleInput = document.getElementById('w-title'); const title = titleInput ? titleInput.value : "Exhibition"; const finalOrder = curationOrder.length > 0 ? curationOrder : (me?.inventory || []); updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { wingTitle: title || "Exhibition", inventory: finalOrder, ready: true }); setSubmittedCuration(true); }} className="w-full py-8 bg-indigo-600 text-white rounded-[2.5rem] font-black text-3xl shadow-xl border-b-[10px] border-indigo-800 uppercase italic tracking-tighter active:scale-95 transition-all text-white text-white text-white text-white text-white text-white text-white text-white text-white">Open Gallery</button>
                 </div>
               </>
             ) : (
-              <div className="p-16 text-center space-y-8 flex flex-col items-center justify-center min-h-[60vh] animate-in slide-in-from-bottom shrink-0 text-slate-900 text-slate-900 text-slate-900"><CheckCircle2 size={140} className="text-indigo-500 text-indigo-500" /><h3 className="text-4xl font-black text-slate-900 uppercase italic leading-none text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">Gallery Sent!</h3><p className="text-slate-400 font-black tracking-widest uppercase text-xs text-slate-900 text-slate-400 text-slate-400 text-slate-400 text-slate-400">Waiting for other curators.</p></div>
+              <div className="p-16 text-center space-y-8 flex flex-col items-center justify-center min-h-[60vh] animate-in slide-in-from-bottom shrink-0 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><CheckCircle2 size={140} className="text-indigo-500 text-indigo-500 text-indigo-500" /><h3 className="text-4xl font-black text-slate-900 uppercase italic leading-none text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">Gallery Sent!</h3><p className="text-slate-400 font-black tracking-widest uppercase text-xs text-slate-900 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400">Waiting for other curators.</p></div>
             )}
           </div>
         ) : room.phase === PHASES.PRESENTATION ? (
-          <div className="p-12 text-center space-y-10 flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in shrink-0 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><ImageIcon size={100} className="text-indigo-500 text-indigo-500 animate-pulse text-indigo-500" /><h3 className="text-3xl font-black text-slate-900 uppercase italic leading-tight text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">Exhibition in Progress</h3><p className="text-slate-500 font-bold uppercase tracking-widest text-xs text-slate-900 text-slate-900 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500">Witness the modern mistakes on the big screen.</p></div>
+          <div className="p-12 text-center space-y-10 flex flex-col items-center justify-center min-h-[60vh] animate-in fade-in shrink-0 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><ImageIcon size={100} className="text-indigo-500 text-indigo-500 text-indigo-500 animate-pulse text-indigo-500 text-indigo-500 text-indigo-500" /><h3 className="text-3xl font-black text-slate-900 uppercase italic leading-tight text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">Exhibition in Progress</h3><p className="text-slate-500 font-bold uppercase tracking-widest text-xs text-slate-900 text-slate-900 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500">Witness the modern mistakes on the big screen.</p></div>
         ) : room.phase === PHASES.VOTING && !voted ? (
-          <div className="p-8 space-y-8 animate-in slide-in-from-bottom text-slate-900 shrink-0 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
-            <div className="text-center space-y-1 text-slate-900 text-slate-900 text-slate-900"><h2 className="text-5xl font-black uppercase italic tracking-tighter leading-none text-slate-900 text-slate-900 text-slate-900 text-slate-900">Cast Your Vote</h2><p className="text-slate-400 font-black uppercase text-xs tracking-widest text-slate-900 text-slate-400 text-slate-400 text-slate-400 text-slate-400">Who curated the best wing?</p></div>
-            <div className="space-y-5 text-slate-900">
+          <div className="p-8 space-y-8 animate-in slide-in-from-bottom text-slate-900 shrink-0 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">
+            <div className="text-center space-y-1 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><h2 className="text-5xl font-black uppercase italic tracking-tighter leading-none text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">Cast Your Vote</h2><p className="text-slate-400 font-black uppercase text-xs tracking-widest text-slate-900 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400">Who curated the best wing?</p></div>
+            <div className="space-y-5 text-slate-900 text-slate-900">
               {players.filter(p => p.id !== user.uid && p.wingTitle).map(p => (
-                <button key={p.id} onClick={async () => { if (navigator.vibrate) navigator.vibrate(100); const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', p.id); const snap = await getDoc(pRef); await updateDoc(pRef, { votes: (snap.data().votes || 0) + 1 }); setVoted(true); updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true }); }} className="w-full bg-white p-4 rounded-[2.5rem] border-4 border-slate-200 shadow-xl text-left border-b-[12px] active:translate-y-2 active:border-b-0 transition-all border-indigo-100 flex items-center gap-4 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><div className="w-20 h-20 bg-slate-50 rounded-2xl p-1 overflow-hidden shrink-0 border-2 border-slate-100 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><img src={items.find(i => (p.inventory || []).includes(i.id))?.image} className="w-full h-full object-contain text-slate-900 text-slate-900" /></div><div className="overflow-hidden text-slate-900"><p className="text-[11px] font-black text-indigo-400 uppercase tracking-widest mb-1 italic leading-none text-indigo-400">{p.name}'s Collection</p><p className="text-2xl font-black text-slate-800 leading-tight truncate text-slate-800 text-slate-800 text-slate-800">"{p.wingTitle}"</p></div></button>
+                <button key={p.id} onClick={async () => { if (navigator.vibrate) navigator.vibrate(100); const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', p.id); const snap = await getDoc(pRef); await updateDoc(pRef, { votes: (snap.data().votes || 0) + 1 }); setVoted(true); updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true }); }} className="w-full bg-white p-4 rounded-[2.5rem] border-4 border-slate-200 shadow-xl text-left border-b-[12px] active:translate-y-2 active:border-b-0 transition-all border-indigo-100 flex items-center gap-4 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><div className="w-20 h-20 bg-slate-50 rounded-2xl p-1 overflow-hidden shrink-0 border-2 border-slate-100 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><img src={items.find(i => (p.inventory || []).includes(i.id))?.image} className="w-full h-full object-contain text-slate-900 text-slate-900 text-slate-900 text-slate-900" /></div><div className="overflow-hidden text-slate-900 text-slate-900 text-slate-900 text-slate-900"><p className="text-[11px] font-black text-indigo-400 uppercase tracking-widest mb-1 italic leading-none text-indigo-400 text-indigo-400 text-indigo-400 text-indigo-400">{p.name}'s Collection</p><p className="text-2xl font-black text-slate-800 leading-tight truncate text-slate-800 text-slate-800 text-slate-800 text-slate-800 text-slate-800 text-slate-800">"{p.wingTitle}"</p></div></button>
               ))}
             </div>
           </div>
         ) : (
-          <div className="p-16 text-center space-y-10 flex flex-col items-center justify-center min-h-[70vh] animate-in fade-in shrink-0 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><div className="relative text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><CheckCircle2 size={160} className="text-indigo-500 text-indigo-500 animate-bounce text-indigo-500" /><div className="absolute -bottom-2 -right-2 bg-yellow-400 text-slate-900 w-12 h-12 rounded-full flex items-center justify-center font-black shadow-lg text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">✓</div></div><div className="space-y-4 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><h3 className="text-6xl font-black uppercase italic leading-none tracking-tighter text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">{voted ? "Vote Cast!" : "Done!"}</h3><p className="text-slate-500 font-black uppercase tracking-[0.2em] text-sm text-center text-slate-900 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500">Watch the results reveal.</p></div></div>
+          <div className="p-16 text-center space-y-10 flex flex-col items-center justify-center min-h-[70vh] animate-in fade-in shrink-0 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><div className="relative text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><CheckCircle2 size={160} className="text-indigo-500 text-indigo-500 text-indigo-500 animate-bounce text-indigo-500 text-indigo-500 text-indigo-500 text-indigo-500 text-indigo-500 text-indigo-500 text-indigo-500" /><div className="absolute -bottom-2 -right-2 bg-yellow-400 text-slate-900 w-12 h-12 rounded-full flex items-center justify-center font-black shadow-lg text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">✓</div></div><div className="space-y-4 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900"><h3 className="text-6xl font-black uppercase italic leading-none tracking-tighter text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900 text-slate-900">{voted ? "Vote Cast!" : "Done!"}</h3><p className="text-slate-500 font-black uppercase tracking-[0.2em] text-sm text-center text-slate-900 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500 text-slate-500">Watch the results reveal.</p></div></div>
         )}
       </main>
 
-      <div className="bg-white/80 backdrop-blur-sm border-t-8 border-slate-200 p-8 flex justify-around items-center text-slate-400 shadow-[0_-20px_50px_rgba(0,0,0,0.1)] shrink-0 text-slate-400">
+      <div className="bg-white/80 backdrop-blur-sm border-t-8 border-slate-200 p-8 flex justify-around items-center text-slate-400 shadow-[0_-20px_50px_rgba(0,0,0,0.1)] shrink-0 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400 text-slate-400">
          <div className={`flex flex-col items-center ${room?.phase?.includes('STUDIO') ? 'text-indigo-600 scale-150' : 'opacity-10'} transition-all duration-500`}><Palette size={35} /></div>
          <div className={`flex flex-col items-center ${room?.phase === PHASES.AUCTION ? 'text-indigo-600 scale-150' : 'opacity-10'} transition-all duration-500`}><Gavel size={35} /></div>
          <div className={`flex flex-col items-center ${room?.phase === PHASES.RESULTS ? 'text-indigo-600 scale-150' : 'opacity-10'} transition-all duration-500`}><Award size={35} /></div>
