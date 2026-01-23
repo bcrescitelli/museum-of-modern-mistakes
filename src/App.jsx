@@ -419,19 +419,21 @@ export default function App() {
       const artistData = artistSnap.data();
 
       let finalOwnerId = artistId;
+      let isReturned = true; // Default to mistake if artist takes it back
 
       // SWAP LOGIC: If artist is full (3), give it to someone else with space
       if ((artistData.inventory?.length || 0) >= 3) {
-        // Find players with most space
+        // Find players with space
         const candidates = players.filter(p => (p.inventory?.length || 0) < 3);
         if (candidates.length > 0) {
           // Pick the one with the least items (highest capacity)
           candidates.sort((a,b) => (a.inventory?.length || 0) - (b.inventory?.length || 0));
           finalOwnerId = candidates[0].id;
+          isReturned = false; // It's a donation, so remove the mistake tag/penalty
         }
       }
 
-      await updateDoc(itemRef, { ownerId: finalOwnerId, pricePaid: 0, returned: true, auctioned: true });
+      await updateDoc(itemRef, { ownerId: finalOwnerId, pricePaid: 0, returned: isReturned, auctioned: true });
       const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', finalOwnerId);
       await updateDoc(pRef, { inventory: arrayUnion(auction.itemId) });
     }
