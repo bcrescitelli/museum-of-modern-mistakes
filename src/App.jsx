@@ -268,6 +268,30 @@ export default function App() {
     }
   }, [isMuted]);
 
+  // Audio Control Logic
+  useEffect(() => {
+    if (audioRef.current) {
+      if (room?.phase === PHASES.INTRO_VIDEO) {
+        audioRef.current.pause();
+      } else {
+        // Resume music when entering a new phase (drawing, auction, etc)
+        audioRef.current.play().catch(() => {});
+      }
+    }
+  }, [room?.phase]);
+
+  // Client Auto-Ready Logic for Voting
+  useEffect(() => {
+    if (view === 'client' && room?.phase === PHASES.VOTING && !voted && user) {
+      const candidates = players.filter(p => p.id !== user.uid && p.wingTitle);
+      // If there are no other wings to vote for, mark this player as ready so host moves on
+      if (candidates.length === 0) {
+        setVoted(true);
+        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true });
+      }
+    }
+  }, [room?.phase, players, voted, user, roomId, view]);
+
   useEffect(() => {
     if (room?.phase === PHASES.VOTING) {
       setVoted(false);
@@ -280,7 +304,7 @@ export default function App() {
     let timer;
 
     const phaseUptime = Date.now() - (room.phaseStartedAt || 0);
-    const isSettled = phaseUptime > 3000;
+    const isSettled = phaseUptime > 1000; // Reduced settle time for snappier feel
 
     if (isSettled && players.length > 0 && players.every(p => p.ready)) {
       if (room.phase === PHASES.STUDIO_DRAW) distributeAppraisals();
@@ -445,7 +469,6 @@ export default function App() {
     const snap = await getDoc(roomRef);
     if (!snap.exists()) { setStatusMsg("Invalid Room"); return; }
     
-    // FIXED: Removed objective requirement which caused joining bug
     await setDoc(doc(roomRef, 'players', user.uid), { 
       name, 
       cash: 1000, 
