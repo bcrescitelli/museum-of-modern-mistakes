@@ -84,7 +84,6 @@ const Splat = ({ type, x, y }) => {
            <path d="M50 50 C 20 20, 10 40, 20 60 C 10 80, 40 90, 50 80 C 70 90, 90 70, 80 50 C 90 30, 60 10, 50 20 Z" fill="#E94E34" />
            <circle cx="50" cy="50" r="10" fill="#991b1b" opacity="0.5" />
            <path d="M45 45 Q 50 40 55 45" stroke="#991b1b" strokeWidth="2" fill="none" />
-           {/* Drips */}
            <path d="M50 80 Q 50 90 48 95" stroke="#E94E34" strokeWidth="4" fill="none" />
            <path d="M20 60 Q 15 70 18 75" stroke="#E94E34" strokeWidth="3" fill="none" />
         </svg>
@@ -130,7 +129,6 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
     if (!canvas || !container) return;
 
     const dpr = window.devicePixelRatio || 1;
-    // Force square aspect ratio based on width
     const rect = container.getBoundingClientRect();
     const size = rect.width; 
     
@@ -300,7 +298,7 @@ const RulesModal = ({ isHost, onStart }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
     <div className={`bg-[#f4f1ea] w-full max-w-4xl p-8 border-8 border-black ${COLORS.cardShadow} animate-in zoom-in duration-300 relative`}>
       <div className="absolute -top-6 -left-6 bg-[#E94E34] text-white px-6 py-2 font-black text-xl border-4 border-black -rotate-2 shadow-[4px_4px_0px_0px_white]">
-        THE MANIFESTO
+        GALLERY RULES
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
@@ -309,14 +307,14 @@ const RulesModal = ({ isHost, onStart }) => (
             <div className="bg-[#2E5CAF] text-white w-12 h-12 flex items-center justify-center font-black text-2xl border-4 border-black shrink-0">1</div>
             <div>
               <h3 className="text-2xl font-black uppercase mb-1">Create</h3>
-              <p className="font-bold text-slate-600 leading-tight">Draw a masterpiece based on a prompt. No talent required.</p>
+              <p className="font-bold text-slate-600 leading-tight">Draw 3 masterpieces based on a series of prompts. No talent required, silly drawings welcomed.</p>
             </div>
           </div>
           <div className="flex gap-4 items-start">
             <div className="bg-[#F4D03F] text-black w-12 h-12 flex items-center justify-center font-black text-2xl border-4 border-black shrink-0">2</div>
             <div>
               <h3 className="text-2xl font-black uppercase mb-1">Appraise</h3>
-              <p className="font-bold text-slate-600 leading-tight">Write a prestigious title and history for someone else's art.</p>
+              <p className="font-bold text-slate-600 leading-tight">Write prestigious/crazy titles and descriptions for someone else's art.</p>
             </div>
           </div>
         </div>
@@ -325,14 +323,14 @@ const RulesModal = ({ isHost, onStart }) => (
             <div className="bg-[#6A5ACD] text-white w-12 h-12 flex items-center justify-center font-black text-2xl border-4 border-black shrink-0">3</div>
             <div>
               <h3 className="text-2xl font-black uppercase mb-1">Bid & Win</h3>
-              <p className="font-bold text-slate-600 leading-tight">Bid cash to collect art. Max 3 items! Earn money when your art sells.</p>
+              <p className="font-bold text-slate-600 leading-tight">Bid cash to collect art. You only have $1,000 and can only have 3 pieces in your exhibit, so bid wisely! </p>
             </div>
           </div>
           <div className="flex gap-4 items-start">
             <div className="bg-[#E94E34] text-white w-12 h-12 flex items-center justify-center font-black text-2xl border-4 border-black shrink-0">4</div>
             <div>
-              <h3 className="text-2xl font-black uppercase mb-1">Profit Share</h3>
-              <p className="font-bold text-slate-600 leading-tight">50% of the sale price is split between the Artist and the Appraiser (Paid at the end!).</p>
+              <h3 className="text-2xl font-black uppercase mb-1">Winning and Losing</h3>
+              <p className="font-bold text-slate-600 leading-tight">Earn money when your art sells and split the comission with your fellow apraiser. Lose money when you don't get any bids. The more votes your gallery has, the more points you'll get.</p>
             </div>
           </div>
         </div>
@@ -372,6 +370,7 @@ export default function App() {
   
   // Reaction State
   const [activeSplats, setActiveSplats] = useState([]);
+  const [hecklesUsed, setHecklesUsed] = useState(0);
 
   // Audio Refs
   const introAudioRef = useRef(null);
@@ -417,6 +416,11 @@ export default function App() {
     return () => { unsubRoom(); unsubPlayers(); unsubItems(); unsubReactions(); };
   }, [roomId, user]);
 
+  // Reset Heckles when presenter changes
+  useEffect(() => {
+      setHecklesUsed(0);
+  }, [room?.presentingIdx]);
+
   const handleReaction = (type) => {
       // Only host needs to visually render and play sound, but we render on host view only below
       if (view !== 'host') return;
@@ -447,8 +451,11 @@ export default function App() {
   };
 
   const sendReaction = async (type) => {
-      if (!roomId) return;
+      if (!roomId || hecklesUsed >= 3) return;
+      
+      setHecklesUsed(prev => prev + 1);
       if (navigator.vibrate) navigator.vibrate(50);
+      
       await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'reactions'), {
           type,
           timestamp: Date.now(),
@@ -820,7 +827,7 @@ export default function App() {
     const totalToAuction = items.filter(i => i.appraised).length;
 
     return (
-      <div className={`min-h-screen flex flex-col p-8 overflow-hidden relative ${COLORS.bg} font-sans text-slate-900 border-[16px] border-black`}>
+      <div className={`h-screen w-screen overflow-hidden flex flex-col p-8 relative ${COLORS.bg} font-sans text-slate-900 border-[16px] border-black`}>
         {/* Rules Modal Overlay */}
         {room?.phase === PHASES.RULES_MODAL && (
           <RulesModal isHost={true} onStart={() => startPhase(PHASES.STUDIO_DRAW)} />
@@ -831,7 +838,7 @@ export default function App() {
             <Splat key={s.id} type={s.type} x={s.x} y={s.y} />
         ))}
 
-        <div className="flex justify-between items-start z-10 mb-8">
+        <div className="flex justify-between items-start z-10 mb-6 shrink-0">
           <div>
             <h1 className="text-5xl font-black text-[#1A1A1A] uppercase tracking-tighter leading-none">Museum of <span className="text-[#E94E34]">Modern</span> Mistakes</h1>
             <p className="bg-[#F4D03F] inline-block px-2 mt-2 font-bold border-2 border-black uppercase tracking-widest text-sm">Main Gallery Display</p>
@@ -842,7 +849,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center relative w-full">
+        <div className="flex-1 min-h-0 flex items-center justify-center relative w-full">
           {/* Background shapes */}
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[#E94E34] rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
           <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-[#2E5CAF] mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
@@ -883,16 +890,16 @@ export default function App() {
 
           {room?.phase === PHASES.AUCTION && (
             room.currentAuction ? (
-              <div className="w-full max-w-[95vw] grid grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom duration-500 items-stretch">
+              <div className="w-full h-full max-h-full grid grid-cols-12 gap-6 animate-in fade-in slide-in-from-bottom duration-500 pb-2">
                 {/* Artwork Card */}
-                <div className={`col-span-5 bg-white p-6 border-8 border-black ${COLORS.cardShadow} flex flex-col relative`}>
+                <div className={`col-span-5 bg-white p-4 border-8 border-black ${COLORS.cardShadow} flex flex-col relative h-full`}>
                   <div className="absolute -top-6 -left-6 bg-[#2E5CAF] text-white px-4 py-1 border-4 border-black font-black uppercase z-20 shadow-lg rotate-2">
                      LOT {auctionedCount + 1}/{totalToAuction}
                   </div>
-                  <div className="bg-[#f4f1ea] border-4 border-black w-full aspect-square flex items-center justify-center p-4 mb-4 shadow-inner relative overflow-hidden">
+                  <div className="bg-[#f4f1ea] border-4 border-black flex-1 w-full flex items-center justify-center p-2 mb-2 shadow-inner relative overflow-hidden">
                      <img src={room.currentAuction.item.image} className="w-full h-full object-contain" />
                   </div>
-                  <div className="flex justify-between items-center border-t-4 border-black pt-4">
+                  <div className="flex justify-between items-center border-t-4 border-black pt-2 shrink-0">
                      <div>
                         <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Artist</p>
                         <p className="text-xl font-black uppercase">{room.currentAuction.item.artistName}</p>
@@ -905,22 +912,24 @@ export default function App() {
                 </div>
 
                 {/* Info & Bidding */}
-                <div className="col-span-7 flex flex-col justify-between space-y-8">
-                  <div className="bg-white text-[#1A1A1A] p-10 border-8 border-black shadow-xl relative overflow-hidden">
-                     <h3 className="text-5xl font-black uppercase leading-tight relative z-10 mb-4">"{room.currentAuction.item.title || "Untitled"}"</h3>
-                     <p className="text-2xl font-mono text-slate-600 leading-relaxed relative z-10 border-l-8 border-[#F4D03F] pl-6">"{room.currentAuction.item.history}"</p>
+                <div className="col-span-7 flex flex-col gap-6 h-full">
+                  <div className="flex-1 min-h-0 bg-white text-[#1A1A1A] p-8 border-8 border-black shadow-xl relative overflow-hidden flex flex-col">
+                     <h3 className="text-5xl font-black uppercase leading-tight relative z-10 mb-4 shrink-0">"{room.currentAuction.item.title || "Untitled"}"</h3>
+                     <div className="overflow-y-auto flex-1">
+                        <p className="text-2xl font-mono text-slate-600 leading-relaxed relative z-10 border-l-8 border-[#F4D03F] pl-6">"{room.currentAuction.item.history}"</p>
+                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-8">
-                      <div className={`bg-[#F4D03F] p-8 border-8 border-black ${COLORS.buttonShadow} text-center flex flex-col justify-center`}>
-                         <p className="text-xl font-black uppercase tracking-widest mb-2">Current Bid</p>
-                         <p className="text-8xl font-black text-black font-mono">${room.currentAuction.highestBid}</p>
-                         <p className="text-2xl font-black uppercase text-white bg-black inline-block mx-auto px-4 py-1 mt-4">{room.currentAuction.highestBidderName || "NO BIDS"}</p>
+                  <div className="grid grid-cols-2 gap-6 shrink-0 h-40">
+                      <div className={`bg-[#F4D03F] p-4 border-8 border-black ${COLORS.buttonShadow} text-center flex flex-col justify-center`}>
+                         <p className="text-xl font-black uppercase tracking-widest mb-1">Current Bid</p>
+                         <p className="text-7xl font-black text-black font-mono">${room.currentAuction.highestBid}</p>
+                         <p className="text-xl font-black uppercase text-white bg-black inline-block mx-auto px-4 py-1 mt-2">{room.currentAuction.highestBidderName || "NO BIDS"}</p>
                       </div>
                       
-                      <div className={`bg-white p-8 border-8 border-black ${COLORS.buttonShadow} flex flex-col items-center justify-center relative`}>
-                         <Timer size={60} className={`mb-4 ${room.currentAuction.timer < 5 ? 'text-[#E94E34] animate-ping' : 'text-black'}`} />
-                         <span className="text-8xl font-black font-mono">{room.currentAuction.timer}s</span>
+                      <div className={`bg-white p-4 border-8 border-black ${COLORS.buttonShadow} flex flex-col items-center justify-center relative`}>
+                         <Timer size={50} className={`mb-2 ${room.currentAuction.timer < 5 ? 'text-[#E94E34] animate-ping' : 'text-black'}`} />
+                         <span className="text-7xl font-black font-mono">{room.currentAuction.timer}s</span>
                       </div>
                   </div>
                 </div>
@@ -1238,9 +1247,25 @@ export default function App() {
       {/* REACTION BAR (Mobile, Presentation Only) */}
       {room?.phase === PHASES.PRESENTATION && (
           <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4 z-50 pointer-events-auto">
-              <button onClick={() => sendReaction('TOMATO')} className="bg-white border-4 border-black rounded-full w-20 h-20 flex items-center justify-center text-4xl shadow-xl active:scale-95 transition-transform">🍅</button>
-              <button onClick={() => sendReaction('EGG')} className="bg-white border-4 border-black rounded-full w-20 h-20 flex items-center justify-center text-4xl shadow-xl active:scale-95 transition-transform">🥚</button>
-              <button onClick={() => sendReaction('ROSE')} className="bg-white border-4 border-black rounded-full w-20 h-20 flex items-center justify-center text-4xl shadow-xl active:scale-95 transition-transform">🌹</button>
+              {['TOMATO', 'EGG', 'ROSE'].map((type, i) => (
+                  <button 
+                    key={type} 
+                    disabled={hecklesUsed >= 3}
+                    onClick={() => sendReaction(type)} 
+                    className={`bg-white border-4 border-black rounded-full w-20 h-20 flex items-center justify-center text-4xl shadow-xl transition-all ${hecklesUsed >= 3 ? 'opacity-50 grayscale cursor-not-allowed' : 'active:scale-95'}`}
+                  >
+                    {type === 'TOMATO' ? '🍅' : type === 'EGG' ? '🥚' : '🌹'}
+                  </button>
+              ))}
+          </div>
+      )}
+      
+      {/* Ammo Counter */}
+      {room?.phase === PHASES.PRESENTATION && (
+          <div className="absolute bottom-28 left-0 right-0 text-center pointer-events-none z-50">
+              <span className="bg-black text-white px-3 py-1 font-bold uppercase text-xs tracking-widest rounded-full border-2 border-white shadow-lg">
+                  Ammo: {3 - hecklesUsed}/3
+              </span>
           </div>
       )}
 
