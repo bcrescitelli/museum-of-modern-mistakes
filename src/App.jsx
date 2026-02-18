@@ -21,14 +21,8 @@ import {
 import { 
   Palette, Trash2, Users, Timer, 
   Gavel, ImageIcon, Award, CheckSquare,
-  Trophy, Coins, Volume2, VolumeX,
-  AlertTriangle, History,
-  Edit3,
-  Star,
-  RefreshCw,
-  Play,
-  Layers,
-  X
+  Trophy, Coins, AlertTriangle, History,
+  Edit3, Star, RefreshCw, Layers
 } from 'lucide-react';
 
 // --- Configuration ---
@@ -48,7 +42,7 @@ const db = getFirestore(app);
 
 const PHASES = {
   LOBBY: 'LOBBY',
-  RULES_MODAL: 'RULES_MODAL', // New Phase replacement for video
+  RULES_MODAL: 'RULES_MODAL', 
   STUDIO_DRAW: 'STUDIO_DRAW',
   STUDIO_APPRAISE: 'STUDIO_APPRAISE',
   AUCTION: 'AUCTION',
@@ -121,6 +115,7 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
     context.scale(dpr, dpr);
     context.lineCap = "round";
     context.lineJoin = "round"; 
+    context.fillStyle = color;
     context.strokeStyle = color;
     context.lineWidth = thickness;
     
@@ -170,6 +165,16 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
     const pos = getPos(e);
     contextRef.current.beginPath();
     contextRef.current.moveTo(pos.x, pos.y);
+    
+    // Draw a single dot immediately to support tapping
+    contextRef.current.fillStyle = color;
+    contextRef.current.beginPath();
+    contextRef.current.arc(pos.x, pos.y, thickness / 2, 0, Math.PI * 2);
+    contextRef.current.fill();
+    
+    contextRef.current.beginPath();
+    contextRef.current.moveTo(pos.x, pos.y);
+    
     setIsDrawing(true);
   };
 
@@ -179,6 +184,12 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
     contextRef.current.lineTo(pos.x, pos.y);
     contextRef.current.stroke();
   };
+
+  // Palette: Red, Orange, Yellow, Green, Royal Blue, Teal, Purple, Pink, Grey, Brown, Tan, White, Black
+  const PALETTE = [
+    '#EF4444', '#F97316', '#FACC15', '#22C55E', '#1D4ED8', '#14B8A6', 
+    '#7E22CE', '#EC4899', '#6B7280', '#78350F', '#D4B996', '#FFFFFF', '#000000'
+  ];
 
   return (
     <div className={`fixed inset-0 z-50 flex flex-col ${COLORS.bg} p-2 overflow-hidden font-sans select-none touch-none text-slate-900`}>
@@ -213,7 +224,7 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
       <div className="py-4 px-1 space-y-4 shrink-0">
         <div className="flex justify-between items-center gap-2">
           <div className="flex gap-2 flex-wrap flex-1 justify-center">
-            {['#1A1A1A', '#E94E34', '#2E5CAF', '#22c55e', '#F4D03F', '#f59e0b', '#6A5ACD', '#D2996C', '#ffffff'].map(c => (
+            {PALETTE.map(c => (
               <button
                 key={c}
                 onClick={() => setColor(c)}
@@ -273,7 +284,7 @@ const RulesModal = ({ isHost, onStart }) => (
             <div className="bg-[#E94E34] text-white w-12 h-12 flex items-center justify-center font-black text-2xl border-4 border-black shrink-0">4</div>
             <div>
               <h3 className="text-2xl font-black uppercase mb-1">Profit Share</h3>
-              <p className="font-bold text-slate-600 leading-tight">50% of the sale price is split between the Artist and the Appraiser.</p>
+              <p className="font-bold text-slate-600 leading-tight">50% of the sale price is split between the Artist and the Appraiser (Paid at the end!).</p>
             </div>
           </div>
         </div>
@@ -305,7 +316,6 @@ export default function App() {
   const [roomId, setRoomId] = useState('');
   const [name, setName] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
-  const [isMuted, setIsMuted] = useState(false);
   const [voted, setVoted] = useState(false);
   const [curationOrder, setCurationOrder] = useState([]);
   const [submittedCuration, setSubmittedCuration] = useState(false);
@@ -336,14 +346,9 @@ export default function App() {
     return () => { unsubRoom(); unsubPlayers(); unsubItems(); };
   }, [roomId, user]);
 
+  // Audio Control Logic (Host Only)
   useEffect(() => {
-    if (introAudioRef.current) introAudioRef.current.muted = isMuted;
-    if (auctionAudioRef.current) auctionAudioRef.current.muted = isMuted;
-  }, [isMuted]);
-
-  // Audio Control Logic
-  useEffect(() => {
-    if (!room) return;
+    if (!room || view !== 'host') return;
     
     // Init audio objects if missing
     if (!introAudioRef.current) {
@@ -368,7 +373,7 @@ export default function App() {
         introAudioRef.current.pause();
         auctionAudioRef.current.play().catch(() => {});
     }
-  }, [room?.phase]);
+  }, [room?.phase, view]);
 
   // Client Auto-Ready Logic for Voting
   useEffect(() => {
@@ -424,7 +429,6 @@ export default function App() {
         const pool = items.filter(i => i.appraised && !i.auctioned);
         if (pool.length > 0) {
           const nextItem = pool[Math.floor(Math.random() * pool.length)];
-          // Find the appraiser name
           const appraiser = players.find(p => p.id === nextItem.appraiserId);
           
           updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), {
@@ -505,22 +509,22 @@ export default function App() {
       const bidderSnap = await getDoc(bidderRef);
       await updateDoc(bidderRef, { cash: (bidderSnap.data().cash || 0) - auction.highestBid, inventory: arrayUnion(auction.itemId) });
 
-      // PAYOUT LOGIC: 50% burned, 50% split evenly between Artist and Appraiser
+      // PAYOUT LOGIC: Add to pendingEarnings (not cash)
       const totalPayout = Math.floor(auction.highestBid * 0.5);
       const share = Math.floor(totalPayout / 2);
 
-      // Pay Artist
+      // Pay Artist Pending
       const artistRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', auction.item.artistId);
       const artistSnap = await getDoc(artistRef);
       if (artistSnap.exists()) {
-          await updateDoc(artistRef, { cash: (artistSnap.data().cash || 0) + share });
+          await updateDoc(artistRef, { pendingEarnings: (artistSnap.data().pendingEarnings || 0) + share });
       }
 
-      // Pay Appraiser
+      // Pay Appraiser Pending
       const appraiserRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', auction.item.appraiserId);
       const appraiserSnap = await getDoc(appraiserRef);
       if (appraiserSnap.exists()) {
-           await updateDoc(appraiserRef, { cash: (appraiserSnap.data().cash || 0) + share });
+           await updateDoc(appraiserRef, { pendingEarnings: (appraiserSnap.data().pendingEarnings || 0) + share });
       }
 
     } else {
@@ -594,14 +598,24 @@ export default function App() {
     const snap = await getDoc(roomRef);
     if (!snap.exists()) { setStatusMsg("Invalid Room"); return; }
     
-    await setDoc(doc(roomRef, 'players', user.uid), { 
-      name, 
-      cash: 1000, 
-      inventory: [], 
-      ready: false, 
-      votes: 0, 
-      wingTitle: '' 
-    });
+    // Check if player exists (Reconnection logic)
+    const pRef = doc(roomRef, 'players', user.uid);
+    const pSnap = await getDoc(pRef);
+    
+    if (pSnap.exists()) {
+      await updateDoc(pRef, { name: name || pSnap.data().name }); // Update name, keep stats
+    } else {
+      await setDoc(pRef, { 
+        name, 
+        cash: 1000, 
+        pendingEarnings: 0,
+        inventory: [], 
+        ready: false, 
+        votes: 0, 
+        wingTitle: '' 
+      });
+    }
+    
     setRoomId(formattedCode); 
     setView('client');
   };
@@ -618,7 +632,7 @@ export default function App() {
     });
     players.forEach(p => {
       const pRef = doc(roomRef, 'players', p.id);
-      batch.update(pRef, { cash: 1000, inventory: [], ready: false, votes: 0, wingTitle: '' });
+      batch.update(pRef, { cash: 1000, pendingEarnings: 0, inventory: [], ready: false, votes: 0, wingTitle: '' });
     });
     await batch.commit();
     setSubmittedCuration(false);
@@ -656,14 +670,21 @@ export default function App() {
 
   if (view === 'landing') {
     return (
-      <div className={`min-h-screen ${COLORS.bg} flex flex-col items-center justify-center p-6 font-sans text-slate-900`}>
-        <div className="max-w-3xl w-full space-y-12 text-center">
-          <div className="space-y-4 relative">
-             <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#F4D03F] w-40 h-40 rounded-full blur-3xl opacity-50"></div>
-            <h1 className="text-7xl sm:text-9xl font-black uppercase tracking-tighter leading-none relative z-10 drop-shadow-[5px_5px_0px_rgba(0,0,0,1)]">Museum of <span className="text-[#E94E34]">Modern</span> Mistakes</h1>
-            <p className="text-xl font-bold bg-[#1A1A1A] text-white inline-block px-4 py-1 uppercase tracking-[0.2em] transform -rotate-1">Fine Art for Fumbling Curators</p>
+      <div className={`min-h-screen ${COLORS.bg} flex flex-col items-center justify-center p-6 font-sans text-slate-900 overflow-hidden`}>
+        {/* Animated Background */}
+        <div className="absolute inset-0 z-0">
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#E94E34] rounded-full blur-[100px] opacity-20 animate-pulse duration-[5000ms]"></div>
+            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#2E5CAF] rounded-full blur-[100px] opacity-20 animate-pulse delay-1000 duration-[6000ms]"></div>
+            <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-[#F4D03F] rounded-full blur-[100px] opacity-20 animate-pulse delay-2000 duration-[7000ms]"></div>
+            <div className="absolute bottom-10 left-10 w-60 h-60 bg-[#6A5ACD] rounded-full blur-[100px] opacity-20 animate-pulse delay-3000 duration-[8000ms]"></div>
+        </div>
+
+        <div className="max-w-3xl w-full space-y-12 text-center relative z-10">
+          <div className="space-y-4">
+            <h1 className="text-5xl sm:text-7xl font-black uppercase tracking-tighter leading-none text-[#1A1A1A]/90 drop-shadow-sm">Museum of <span className="text-[#E94E34]">Mistakes</span></h1>
+            <p className="text-lg sm:text-xl font-bold bg-[#1A1A1A] text-white inline-block px-4 py-1 uppercase tracking-[0.2em] transform -rotate-1">Fine Art for Fumbling Curators</p>
           </div>
-          <div className={`bg-white p-12 border-4 border-black ${COLORS.cardShadow} space-y-6 relative`}>
+          <div className={`bg-white p-8 sm:p-12 border-4 border-black ${COLORS.cardShadow} space-y-6 relative`}>
             {/* Geometric Decor */}
             <div className="absolute -top-6 -left-6 w-12 h-12 bg-[#2E5CAF] border-4 border-black"></div>
             <div className="absolute -bottom-6 -right-6 w-12 h-12 bg-[#E94E34] rounded-full border-4 border-black"></div>
@@ -687,7 +708,7 @@ export default function App() {
     const totalToAuction = items.filter(i => i.appraised).length;
 
     return (
-      <div className={`min-h-screen flex flex-col p-12 overflow-hidden relative ${COLORS.bg} font-sans text-slate-900 border-[20px] border-black`}>
+      <div className={`min-h-screen flex flex-col p-8 overflow-hidden relative ${COLORS.bg} font-sans text-slate-900 border-[16px] border-black`}>
         {/* Rules Modal Overlay */}
         {room?.phase === PHASES.RULES_MODAL && (
           <RulesModal isHost={true} onStart={() => startPhase(PHASES.STUDIO_DRAW)} />
@@ -704,14 +725,14 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center relative">
+        <div className="flex-1 flex items-center justify-center relative w-full">
           {/* Background shapes */}
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[#E94E34] rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
           <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-[#2E5CAF] mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
 
           {room?.phase === PHASES.LOBBY && (
             <div className="text-center space-y-12 max-w-5xl w-full">
-              <h2 className="text-8xl font-black text-[#1A1A1A] uppercase italic tracking-tighter">Assemblage</h2>
+              <h2 className="text-7xl font-black text-[#1A1A1A] uppercase italic tracking-tighter">Curating Our Artists</h2>
               <div className="flex flex-wrap justify-center gap-6">
                 {players.map(p => (
                   <div key={p.id} className={`bg-white px-10 py-5 border-4 border-black font-black text-2xl uppercase ${COLORS.buttonShadow} animate-in slide-in-from-bottom`}>{p.name}</div>
@@ -745,10 +766,13 @@ export default function App() {
 
           {room?.phase === PHASES.AUCTION && (
             room.currentAuction ? (
-              <div className="w-full max-w-[90vw] grid grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom duration-500">
+              <div className="w-full max-w-[95vw] grid grid-cols-12 gap-8 animate-in fade-in slide-in-from-bottom duration-500 items-stretch">
                 {/* Artwork Card */}
-                <div className={`col-span-5 bg-white p-8 border-8 border-black ${COLORS.cardShadow} flex flex-col`}>
-                  <div className="bg-[#f4f1ea] border-4 border-black flex-1 flex items-center justify-center p-4 mb-6 shadow-inner relative overflow-hidden">
+                <div className={`col-span-5 bg-white p-6 border-8 border-black ${COLORS.cardShadow} flex flex-col relative`}>
+                  <div className="absolute -top-6 -left-6 bg-[#2E5CAF] text-white px-4 py-1 border-4 border-black font-black uppercase z-20 shadow-lg rotate-2">
+                     LOT {auctionedCount + 1}/{totalToAuction}
+                  </div>
+                  <div className="bg-[#f4f1ea] border-4 border-black flex-1 flex items-center justify-center p-4 mb-4 shadow-inner relative overflow-hidden">
                      <img src={room.currentAuction.item.image} className="max-h-[50vh] object-contain shadow-xl" />
                   </div>
                   <div className="flex justify-between items-center border-t-4 border-black pt-4">
@@ -765,12 +789,9 @@ export default function App() {
 
                 {/* Info & Bidding */}
                 <div className="col-span-7 flex flex-col justify-between space-y-8">
-                  <div className="bg-[#1A1A1A] text-white p-12 border-8 border-white shadow-xl relative overflow-hidden">
-                     <div className="absolute top-0 right-0 p-4 opacity-20">
-                        <History size={200} />
-                     </div>
-                     <h3 className="text-6xl font-black uppercase leading-tight relative z-10 mb-4">"{room.currentAuction.item.title || "Untitled"}"</h3>
-                     <p className="text-2xl font-mono text-[#F4D03F] leading-relaxed relative z-10 border-l-8 border-[#E94E34] pl-6">"{room.currentAuction.item.history}"</p>
+                  <div className="bg-white text-[#1A1A1A] p-10 border-8 border-black shadow-xl relative overflow-hidden">
+                     <h3 className="text-5xl font-black uppercase leading-tight relative z-10 mb-4">"{room.currentAuction.item.title || "Untitled"}"</h3>
+                     <p className="text-2xl font-mono text-slate-600 leading-relaxed relative z-10 border-l-8 border-[#F4D03F] pl-6">"{room.currentAuction.item.history}"</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-8">
@@ -797,29 +818,32 @@ export default function App() {
           )}
 
           {room?.phase === PHASES.PRESENTATION && (
-            <div className="w-full h-full flex flex-col items-center justify-center animate-in zoom-in duration-500">
+            <div className="w-full h-full flex flex-col items-center justify-center animate-in zoom-in duration-500 overflow-hidden">
               {players[room.presentingIdx] && (
                 <>
-                  <div className="text-center mb-12">
-                    <div className="inline-block px-8 py-2 bg-[#1A1A1A] text-white font-black text-xl uppercase tracking-widest border-4 border-white shadow-xl mb-4 -rotate-2">Curated By: {players[room.presentingIdx].name}</div>
-                    <h2 className="text-8xl font-black text-[#1A1A1A] uppercase leading-none tracking-tighter">"{players[room.presentingIdx].wingTitle}"</h2>
+                  <div className="text-center mb-6 shrink-0">
+                    <div className="inline-block px-8 py-2 bg-[#1A1A1A] text-white font-black text-xl uppercase tracking-widest border-4 border-white shadow-xl mb-2 -rotate-2">Curated By: {players[room.presentingIdx].name}</div>
+                    <h2 className="text-6xl font-black text-[#1A1A1A] uppercase leading-none tracking-tighter">"{players[room.presentingIdx].wingTitle}"</h2>
                   </div>
-                  <div className="flex w-full gap-8 justify-center items-start px-12">
-                    {items.filter(i => (players[room.presentingIdx].inventory || []).includes(i.id)).map((item, idx) => (
-                      <div key={item.id} className={`flex-1 max-w-[30%] bg-white p-6 border-8 border-black ${COLORS.cardShadow} relative transform hover:-translate-y-4 transition-transform`}>
+                  <div className="flex w-full gap-4 justify-center items-center px-4 h-full max-h-[60vh]">
+                    {players[room.presentingIdx].inventory.map((itemId, idx) => {
+                       const item = items.find(i => i.id === itemId);
+                       if (!item) return null;
+                       return (
+                      <div key={item.id} className={`flex-1 h-full max-w-[32%] bg-white p-4 border-8 border-black ${COLORS.cardShadow} relative transform flex flex-col`}>
                         {/* Number Badge */}
-                        <div className="absolute -top-6 -left-6 w-12 h-12 bg-[#F4D03F] border-4 border-black flex items-center justify-center font-black text-xl z-20">{idx + 1}</div>
+                        <div className="absolute -top-4 -left-4 w-10 h-10 bg-[#F4D03F] border-4 border-black flex items-center justify-center font-black text-xl z-20">{idx + 1}</div>
                         
                         {item.returned && (
-                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 bg-[#E94E34] text-white px-8 py-4 font-black text-5xl border-8 border-white shadow-2xl z-30 opacity-90 animate-pulse uppercase">FORGERY</div>
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 bg-[#E94E34] text-white px-8 py-4 font-black text-4xl border-8 border-white shadow-2xl z-30 opacity-90 animate-pulse uppercase">MISTAKE</div>
                         )}
-                        <div className="bg-[#f4f1ea] border-4 border-black p-4 mb-6">
-                          <img src={item.image} className="w-full h-48 object-contain mx-auto" />
+                        <div className="bg-[#f4f1ea] border-4 border-black p-2 mb-4 flex-1 flex items-center justify-center overflow-hidden">
+                          <img src={item.image} className="w-full h-full object-contain" />
                         </div>
-                        <h4 className="text-3xl font-black uppercase text-[#1A1A1A] leading-none mb-2">{item.title}</h4>
-                        <p className="text-lg font-mono text-slate-500 leading-tight border-t-4 border-black pt-4">"{item.history}"</p>
+                        <h4 className="text-2xl font-black uppercase text-[#1A1A1A] leading-none mb-1 truncate">{item.title}</h4>
+                        <p className="text-sm font-mono text-slate-500 leading-tight border-t-4 border-black pt-2 line-clamp-3">"{item.history}"</p>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 </>
               )}
@@ -850,12 +874,13 @@ export default function App() {
                 {[...players].sort((a,b) => {
                   const getScore = (p) => {
                     const mistakePenalty = items.filter(i => i.returned && i.artistId === p.id).length * 100;
-                    return (p.cash || 0) + (p.votes || 0) * 200 - mistakePenalty;
+                    // Total Score = Remaining Cash + Vote Bonus + Profit Share - Penalties
+                    return (p.cash || 0) + (p.votes || 0) * 200 + (p.pendingEarnings || 0) - mistakePenalty;
                   };
                   return getScore(b) - getScore(a);
                 }).map((p, i) => {
                   const mistakePenalty = items.filter(i => i.returned && i.artistId === p.id).length * 100;
-                  const totalScore = (p.cash || 0) + (p.votes || 0) * 200 - mistakePenalty;
+                  const totalScore = (p.cash || 0) + (p.votes || 0) * 200 + (p.pendingEarnings || 0) - mistakePenalty;
                   return (
                     <div key={p.id} className={`bg-white p-6 border-4 border-black ${COLORS.buttonShadow} flex items-center justify-between group hover:bg-[#F4D03F] transition-colors`}>
                       <div className="flex items-center gap-8">
@@ -865,6 +890,7 @@ export default function App() {
                           <div className="flex gap-6 text-sm font-bold uppercase tracking-widest mt-1">
                              <span className="bg-[#2E5CAF] text-white px-2">Votes: {p.votes || 0}</span>
                              <span className="bg-[#1A1A1A] text-white px-2">Cash: ${p.cash}</span>
+                             {p.pendingEarnings > 0 && <span className="bg-[#E94E34] text-white px-2">Profit: +${p.pendingEarnings}</span>}
                           </div>
                         </div>
                       </div>
@@ -877,10 +903,6 @@ export default function App() {
             </div>
           )}
         </div>
-
-        <button onClick={() => setIsMuted(!isMuted)} className={`absolute bottom-8 left-8 bg-white p-4 border-4 border-black ${COLORS.buttonShadow} hover:translate-y-1 hover:shadow-none transition-all`}>
-          {isMuted ? <VolumeX size={30} /> : <Volume2 size={30} />}
-        </button>
       </div>
     );
   }
@@ -890,7 +912,15 @@ export default function App() {
 
   return (
     <div className={`min-h-[100dvh] flex flex-col max-w-md mx-auto relative overflow-hidden font-sans transition-colors duration-200 ${isPanicClient ? 'bg-[#E94E34]' : COLORS.bg}`}>
-      {/* Rules Modal for Mobile (if needed, though mainly for host logic, nice to have just in case) */}
+      {/* Animated Background for Mobile */}
+      {!isPanicClient && (
+         <div className="absolute inset-0 z-0 opacity-30 pointer-events-none">
+             <div className="absolute top-0 right-0 w-64 h-64 bg-[#E94E34] rounded-full blur-[60px] animate-pulse"></div>
+             <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#2E5CAF] rounded-full blur-[60px] animate-pulse delay-700"></div>
+         </div>
+      )}
+
+      {/* Rules Modal for Mobile */}
       {room?.phase === PHASES.RULES_MODAL && (
           <div className="absolute inset-0 z-50 bg-[#f4f1ea] flex flex-col items-center justify-center p-8 text-center space-y-6">
               <h2 className="text-4xl font-black uppercase">Look Up!</h2>
@@ -899,21 +929,21 @@ export default function App() {
           </div>
       )}
 
-      <div className="bg-[#1A1A1A] text-white p-4 flex justify-between items-center z-10 border-b-4 border-white shrink-0">
+      <div className="bg-[#1A1A1A] text-white p-3 flex justify-between items-center z-10 border-b-4 border-white shrink-0 shadow-lg">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-[#F4D03F] border-2 border-white flex items-center justify-center font-black text-black text-2xl">{name ? name[0] : me?.name ? me.name[0] : '?'}</div>
+          <div className="w-10 h-10 bg-[#F4D03F] border-2 border-white flex items-center justify-center font-black text-black text-xl">{name ? name[0] : me?.name ? me.name[0] : '?'}</div>
           <div>
-            <span className="font-black text-lg uppercase tracking-tight block leading-none mb-1 truncate max-w-[100px]">{name || me?.name || 'Curator'}</span>
+            <span className="font-black text-base uppercase tracking-tight block leading-none mb-1 truncate max-w-[100px]">{name || me?.name || 'Curator'}</span>
             <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase font-bold tracking-widest">Inv: {me?.inventory?.length || 0}/3</div>
           </div>
         </div>
-        <div className="flex items-center gap-2 bg-white text-black px-4 py-2 border-2 border-slate-500">
-          <Coins size={20} className="text-[#E94E34]" />
-          <span className="font-mono font-black text-xl leading-none">${me?.cash || 0}</span>
+        <div className="flex items-center gap-2 bg-white text-black px-3 py-1 border-2 border-slate-500">
+          <Coins size={16} className="text-[#E94E34]" />
+          <span className="font-mono font-black text-lg leading-none">${me?.cash || 0}</span>
         </div>
       </div>
 
-      <main className="flex-1 overflow-y-auto pb-24 relative">
+      <main className="flex-1 overflow-y-auto pb-24 relative z-10">
         {!room ? (
           <div className="p-16 text-center font-black uppercase tracking-widest animate-pulse">Connecting...</div>
         ) : room.phase === PHASES.LOBBY ? (
@@ -1087,7 +1117,7 @@ export default function App() {
       </main>
 
       {/* Mobile Footer Nav */}
-      <div className="bg-white border-t-4 border-black p-6 flex justify-around items-center text-slate-300 shrink-0">
+      <div className="bg-white border-t-4 border-black p-6 flex justify-around items-center text-slate-300 shrink-0 z-10">
          <div className={`flex flex-col items-center ${room?.phase?.includes('STUDIO') ? 'text-[#E94E34] scale-125' : 'grayscale opacity-30'} transition-all`}><Edit3 size={30} /></div>
          <div className={`flex flex-col items-center ${room?.phase === PHASES.AUCTION ? 'text-[#E94E34] scale-125' : 'grayscale opacity-30'} transition-all`}><Gavel size={30} /></div>
          <div className={`flex flex-col items-center ${room?.phase === PHASES.RESULTS ? 'text-[#E94E34] scale-125' : 'grayscale opacity-30'} transition-all`}><Award size={30} /></div>
