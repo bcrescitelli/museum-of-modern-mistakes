@@ -16,13 +16,17 @@ import {
   arrayUnion, 
   runTransaction,
   writeBatch,
-  getDocs
+  getDocs,
+  addDoc,
+  query,
+  orderBy,
+  limit
 } from 'firebase/firestore';
 import { 
   Palette, Trash2, Users, Timer, 
   Gavel, ImageIcon, Award, CheckSquare,
   Trophy, Coins, AlertTriangle, History,
-  Edit3, Star, RefreshCw, Layers
+  Edit3, Star, RefreshCw, Layers, Loader2
 } from 'lucide-react';
 
 // --- Configuration ---
@@ -71,6 +75,44 @@ const COLORS = {
 
 const COMMON_BTN = `relative border-4 border-black font-bold uppercase tracking-widest active:translate-y-1 active:shadow-none transition-all ${COLORS.buttonShadow}`;
 
+// --- Visual Effects (Splats) ---
+const Splat = ({ type, x, y }) => {
+  if (type === 'TOMATO') {
+    return (
+      <div style={{ left: `${x}%`, top: `${y}%` }} className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-1/2 animate-in zoom-in duration-100">
+        <svg width="200" height="200" viewBox="0 0 100 100" className="drop-shadow-lg opacity-90">
+           <path d="M50 50 C 20 20, 10 40, 20 60 C 10 80, 40 90, 50 80 C 70 90, 90 70, 80 50 C 90 30, 60 10, 50 20 Z" fill="#E94E34" />
+           <circle cx="50" cy="50" r="10" fill="#991b1b" opacity="0.5" />
+           <path d="M45 45 Q 50 40 55 45" stroke="#991b1b" strokeWidth="2" fill="none" />
+           {/* Drips */}
+           <path d="M50 80 Q 50 90 48 95" stroke="#E94E34" strokeWidth="4" fill="none" />
+           <path d="M20 60 Q 15 70 18 75" stroke="#E94E34" strokeWidth="3" fill="none" />
+        </svg>
+      </div>
+    );
+  }
+  if (type === 'EGG') {
+    return (
+      <div style={{ left: `${x}%`, top: `${y}%` }} className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-1/2 animate-in zoom-in duration-100">
+        <svg width="180" height="180" viewBox="0 0 100 100" className="drop-shadow-lg opacity-95">
+           <path d="M50 50 C 30 30, 20 60, 40 80 C 60 90, 80 80, 90 60 C 90 40, 70 20, 50 50 Z" fill="#FFFFFF" />
+           <circle cx="55" cy="55" r="15" fill="#F4D03F" />
+           <circle cx="58" cy="52" r="4" fill="white" opacity="0.6" />
+        </svg>
+      </div>
+    );
+  }
+  if (type === 'ROSE') {
+    return (
+      <div style={{ left: `${x}%`, top: `${y}%` }} className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-1/2 animate-in slide-in-from-bottom duration-1000 fade-out duration-1000">
+         <span className="text-8xl filter drop-shadow-xl">🌹</span>
+      </div>
+    );
+  }
+  return null;
+};
+
+
 // --- Components ---
 
 const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
@@ -88,9 +130,12 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
     if (!canvas || !container) return;
 
     const dpr = window.devicePixelRatio || 1;
+    // Force square aspect ratio based on width
     const rect = container.getBoundingClientRect();
-    const newWidth = rect.width * dpr;
-    const newHeight = rect.height * dpr;
+    const size = rect.width; 
+    
+    const newWidth = size * dpr;
+    const newHeight = size * dpr;
 
     if (canvas.width === newWidth && canvas.height === newHeight) {
       if (contextRef.current) {
@@ -108,8 +153,8 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
 
     canvas.width = newWidth;
     canvas.height = newHeight;
-    canvas.style.width = `${rect.width}px`;
-    canvas.style.height = `${rect.height}px`;
+    canvas.style.width = `${size}px`;
+    canvas.style.height = `${size}px`;
 
     const context = canvas.getContext("2d");
     context.scale(dpr, dpr);
@@ -118,6 +163,12 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
     context.fillStyle = color;
     context.strokeStyle = color;
     context.lineWidth = thickness;
+    
+    if (tempCanvas.width === 0) {
+        context.fillStyle = "#FFFFFF";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = color; 
+    }
     
     if (tempCanvas.width > 0) {
       context.drawImage(tempCanvas, 0, 0, tempCanvas.width / dpr, tempCanvas.height / dpr);
@@ -166,7 +217,6 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
     contextRef.current.beginPath();
     contextRef.current.moveTo(pos.x, pos.y);
     
-    // Draw a single dot immediately to support tapping
     contextRef.current.fillStyle = color;
     contextRef.current.beginPath();
     contextRef.current.arc(pos.x, pos.y, thickness / 2, 0, Math.PI * 2);
@@ -185,29 +235,28 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
     contextRef.current.stroke();
   };
 
-  // Palette: Red, Orange, Yellow, Green, Royal Blue, Teal, Purple, Pink, Grey, Brown, Tan, White, Black
   const PALETTE = [
     '#EF4444', '#F97316', '#FACC15', '#22C55E', '#1D4ED8', '#14B8A6', 
     '#7E22CE', '#EC4899', '#6B7280', '#78350F', '#D4B996', '#FFFFFF', '#000000'
   ];
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col ${COLORS.bg} p-2 overflow-hidden font-sans select-none touch-none text-slate-900`}>
+    <div className={`fixed inset-0 z-50 flex flex-col ${COLORS.bg} overflow-hidden font-sans select-none touch-none text-slate-900 h-[100dvh]`}>
       <style>{`
         body { -webkit-user-select: none; -webkit-touch-callout: none; }
         canvas { touch-action: none; }
       `}</style>
-      <div className={`flex justify-between items-center p-4 bg-white border-4 border-black mb-2 shrink-0 ${COLORS.cardShadow}`}>
-        <div className="flex-1 pr-4">
-          <p className="text-xs font-bold uppercase tracking-widest mb-1">Assignment:</p>
-          <h2 className="text-xl sm:text-2xl font-black uppercase leading-none break-words">{prompt}</h2>
+      <div className={`flex justify-between items-center p-3 bg-white border-b-4 border-black mb-1 shrink-0`}>
+        <div className="flex-1 pr-2">
+          <p className="text-[10px] font-bold uppercase tracking-widest mb-1">Assignment:</p>
+          <h2 className="text-sm font-black uppercase leading-tight break-words line-clamp-2">{prompt}</h2>
         </div>
-        <div className={`w-16 h-16 flex items-center justify-center border-4 border-black font-mono text-xl font-bold ${timeLeft < 10 ? 'bg-[#E94E34] text-white animate-pulse' : 'bg-[#F4D03F]'} shrink-0`}>
+        <div className={`w-12 h-12 flex items-center justify-center border-4 border-black font-mono text-lg font-bold ${timeLeft < 10 ? 'bg-[#E94E34] text-white animate-pulse' : 'bg-[#F4D03F]'} shrink-0`}>
           {timeLeft}
         </div>
       </div>
       
-      <div ref={containerRef} className="flex-1 relative bg-white border-4 border-black shadow-inner overflow-hidden cursor-crosshair">
+      <div ref={containerRef} className="w-full aspect-square bg-white border-y-4 border-black shadow-inner overflow-hidden cursor-crosshair mx-auto">
         <canvas
           ref={canvasRef}
           onMouseDown={startDrawing}
@@ -221,9 +270,8 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
         />
       </div>
 
-      <div className="py-4 px-1 space-y-4 shrink-0">
-        <div className="flex justify-between items-center gap-2">
-          <div className="flex gap-2 flex-wrap flex-1 justify-center">
+      <div className="flex-1 flex flex-col p-2 space-y-2 shrink-0 pb-20 overflow-y-auto">
+        <div className="flex gap-2 flex-wrap justify-center">
             {PALETTE.map(c => (
               <button
                 key={c}
@@ -232,17 +280,17 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
                 style={{ backgroundColor: c }}
               />
             ))}
-          </div>
-          <button onClick={() => contextRef.current.clearRect(0,0,canvasRef.current.width,canvasRef.current.height)} className={`p-3 bg-white border-2 border-black hover:bg-red-100`}>
-            <Trash2 size={20} />
-          </button>
         </div>
         
-        <div className={`flex items-center gap-4 bg-white p-3 border-4 border-black ${COLORS.cardShadow}`}>
-          <Edit3 size={20} className="text-black" />
+        <div className="flex items-center gap-2 bg-white p-2 border-4 border-black">
+          <Edit3 size={16} className="text-black" />
           <input type="range" min="2" max="30" value={thickness} onChange={(e) => setThickness(parseInt(e.target.value))} className="flex-1 h-2 bg-slate-200 rounded-none appearance-none cursor-pointer accent-black border border-black" />
-          <button onClick={handleSave} className={`px-6 py-2 bg-[#2E5CAF] text-white ${COMMON_BTN}`}>DONE</button>
+          <button onClick={() => contextRef.current.clearRect(0,0,canvasRef.current.width,canvasRef.current.height)} className={`p-2 bg-white border-2 border-black hover:bg-red-100`}>
+            <Trash2 size={16} />
+          </button>
         </div>
+
+        <button onClick={handleSave} className={`w-full py-4 bg-[#2E5CAF] text-white text-xl ${COMMON_BTN}`}>DONE</button>
       </div>
     </div>
   );
@@ -320,19 +368,27 @@ export default function App() {
   const [curationOrder, setCurationOrder] = useState([]);
   const [submittedCuration, setSubmittedCuration] = useState(false);
   const [isBidding, setIsBidding] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(true);
   
+  // Reaction State
+  const [activeSplats, setActiveSplats] = useState([]);
+
   // Audio Refs
   const introAudioRef = useRef(null);
   const auctionAudioRef = useRef(null);
+  const goodAudioRef = useRef(null);
+  const badAudioRef = useRef(null);
 
   const me = useMemo(() => players.find(p => p.id === user?.uid), [players, user?.uid]);
 
   useEffect(() => {
+    setIsConnecting(true);
     const unsub = onAuthStateChanged(auth, async (u) => {
       if (!u) {
         const cred = await signInAnonymously(auth);
         setUser(cred.user);
       } else { setUser(u); }
+      setIsConnecting(false);
     });
     return unsub;
   }, []);
@@ -343,24 +399,72 @@ export default function App() {
     const unsubRoom = onSnapshot(doc(db, ...roomPath), (doc) => { if (doc.exists()) setRoom({ id: doc.id, ...doc.data() }); });
     const unsubPlayers = onSnapshot(collection(db, ...roomPath, 'players'), (snap) => { setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() }))); });
     const unsubItems = onSnapshot(collection(db, ...roomPath, 'items'), (snap) => { setItems(snap.docs.map(d => ({ id: d.id, ...d.data() }))); });
-    return () => { unsubRoom(); unsubPlayers(); unsubItems(); };
+    
+    // Listen for reactions
+    const q = query(collection(db, ...roomPath, 'reactions'), orderBy('timestamp', 'desc'), limit(1));
+    const unsubReactions = onSnapshot(q, (snapshot) => {
+       snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+             const data = change.doc.data();
+             // Only process if recent (within 2 seconds) to prevent blast on reload
+             if (Date.now() - data.timestamp < 3000) {
+                 handleReaction(data.type);
+             }
+          }
+       });
+    });
+
+    return () => { unsubRoom(); unsubPlayers(); unsubItems(); unsubReactions(); };
   }, [roomId, user]);
+
+  const handleReaction = (type) => {
+      // Only host needs to visually render and play sound, but we render on host view only below
+      if (view !== 'host') return;
+
+      // Play Sound
+      if (type === 'ROSE') {
+         if (goodAudioRef.current) {
+            goodAudioRef.current.currentTime = 0;
+            goodAudioRef.current.play().catch(()=>{});
+         }
+      } else {
+         if (badAudioRef.current) {
+            badAudioRef.current.currentTime = 0;
+            badAudioRef.current.play().catch(()=>{});
+         }
+      }
+
+      // Add Splat Visual
+      const id = Date.now() + Math.random();
+      const x = 20 + Math.random() * 60; // Keep roughly central
+      const y = 20 + Math.random() * 60;
+      setActiveSplats(prev => [...prev, { id, type, x, y }]);
+      
+      // Remove after 2 seconds
+      setTimeout(() => {
+          setActiveSplats(prev => prev.filter(s => s.id !== id));
+      }, 2000);
+  };
+
+  const sendReaction = async (type) => {
+      if (!roomId) return;
+      if (navigator.vibrate) navigator.vibrate(50);
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'reactions'), {
+          type,
+          timestamp: Date.now(),
+          sender: user.uid
+      });
+  };
 
   // Audio Control Logic (Host Only)
   useEffect(() => {
     if (!room || view !== 'host') return;
     
     // Init audio objects if missing
-    if (!introAudioRef.current) {
-        introAudioRef.current = new Audio('/intro.mp3');
-        introAudioRef.current.loop = true;
-        introAudioRef.current.volume = 0.3;
-    }
-    if (!auctionAudioRef.current) {
-        auctionAudioRef.current = new Audio('/auction.mp3');
-        auctionAudioRef.current.loop = true;
-        auctionAudioRef.current.volume = 0.4;
-    }
+    if (!introAudioRef.current) { introAudioRef.current = new Audio('/intro.mp3'); introAudioRef.current.loop = true; introAudioRef.current.volume = 0.3; }
+    if (!auctionAudioRef.current) { auctionAudioRef.current = new Audio('/auction.mp3'); auctionAudioRef.current.loop = true; auctionAudioRef.current.volume = 0.4; }
+    if (!goodAudioRef.current) { goodAudioRef.current = new Audio('/good.m4a'); goodAudioRef.current.volume = 0.6; }
+    if (!badAudioRef.current) { badAudioRef.current = new Audio('/bad.m4a'); badAudioRef.current.volume = 0.6; }
 
     const introPhases = [PHASES.LOBBY, PHASES.RULES_MODAL, PHASES.STUDIO_DRAW, PHASES.STUDIO_APPRAISE];
     const actionPhases = [PHASES.AUCTION, PHASES.CURATION, PHASES.PRESENTATION, PHASES.VOTING, PHASES.RESULTS];
@@ -416,7 +520,7 @@ export default function App() {
           updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentationTimer: room.presentationTimer - 1 });
         } else {
           if (currentIdx < players.length - 1) {
-            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentingIdx: currentIdx + 1, presentationTimer: 12 });
+            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentingIdx: currentIdx + 1, presentationTimer: 20 }); // Increased time for reactions
           } else { 
             startPhase(PHASES.VOTING); 
           }
@@ -504,23 +608,19 @@ export default function App() {
     if (auction.highestBidder) {
       await updateDoc(itemRef, { ownerId: auction.highestBidder, pricePaid: auction.highestBid, auctioned: true, returned: false });
       
-      // Deduct cash from bidder
       const bidderRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', auction.highestBidder);
       const bidderSnap = await getDoc(bidderRef);
       await updateDoc(bidderRef, { cash: (bidderSnap.data().cash || 0) - auction.highestBid, inventory: arrayUnion(auction.itemId) });
 
-      // PAYOUT LOGIC: Add to pendingEarnings (not cash)
       const totalPayout = Math.floor(auction.highestBid * 0.5);
       const share = Math.floor(totalPayout / 2);
 
-      // Pay Artist Pending
       const artistRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', auction.item.artistId);
       const artistSnap = await getDoc(artistRef);
       if (artistSnap.exists()) {
           await updateDoc(artistRef, { pendingEarnings: (artistSnap.data().pendingEarnings || 0) + share });
       }
 
-      // Pay Appraiser Pending
       const appraiserRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', auction.item.appraiserId);
       const appraiserSnap = await getDoc(appraiserRef);
       if (appraiserSnap.exists()) {
@@ -528,7 +628,6 @@ export default function App() {
       }
 
     } else {
-      // Mistake returned to artist
       const artistId = auction.item.artistId;
       const artistRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', artistId);
       const artistSnap = await getDoc(artistRef);
@@ -598,12 +697,11 @@ export default function App() {
     const snap = await getDoc(roomRef);
     if (!snap.exists()) { setStatusMsg("Invalid Room"); return; }
     
-    // Check if player exists (Reconnection logic)
     const pRef = doc(roomRef, 'players', user.uid);
     const pSnap = await getDoc(pRef);
     
     if (pSnap.exists()) {
-      await updateDoc(pRef, { name: name || pSnap.data().name }); // Update name, keep stats
+      await updateDoc(pRef, { name: name || pSnap.data().name });
     } else {
       await setDoc(pRef, { 
         name, 
@@ -625,6 +723,10 @@ export default function App() {
     const itemSnaps = await getDocs(collection(roomRef, 'items'));
     const batch = writeBatch(db);
     itemSnaps.docs.forEach(d => batch.delete(d.ref));
+    const batch2 = writeBatch(db);
+    const reactionSnaps = await getDocs(collection(roomRef, 'reactions'));
+    reactionSnaps.docs.forEach(d => batch2.delete(d.ref));
+    
     const commonPrompts = [...PROMPTS].sort(() => 0.5 - Math.random()).slice(0, 3);
     batch.update(roomRef, {
       phase: PHASES.STUDIO_DRAW, phaseStartedAt: Date.now(),
@@ -635,6 +737,7 @@ export default function App() {
       batch.update(pRef, { cash: 1000, pendingEarnings: 0, inventory: [], ready: false, votes: 0, wingTitle: '' });
     });
     await batch.commit();
+    await batch2.commit();
     setSubmittedCuration(false);
     setCurationOrder([]);
     setVoted(false);
@@ -668,9 +771,18 @@ export default function App() {
 
   // --- Views ---
 
+  if (isConnecting) {
+      return (
+          <div className={`min-h-[100dvh] ${COLORS.bg} flex flex-col items-center justify-center p-6 text-center space-y-4`}>
+              <Loader2 className="animate-spin text-black" size={48} />
+              <h2 className="text-2xl font-black uppercase tracking-widest">Loading Gallery...</h2>
+          </div>
+      );
+  }
+
   if (view === 'landing') {
     return (
-      <div className={`min-h-screen ${COLORS.bg} flex flex-col items-center justify-center p-6 font-sans text-slate-900 overflow-hidden`}>
+      <div className={`min-h-[100dvh] ${COLORS.bg} flex flex-col items-center justify-center p-6 font-sans text-slate-900 overflow-hidden`}>
         {/* Animated Background */}
         <div className="absolute inset-0 z-0">
             <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#E94E34] rounded-full blur-[100px] opacity-20 animate-pulse duration-[5000ms]"></div>
@@ -679,20 +791,20 @@ export default function App() {
             <div className="absolute bottom-10 left-10 w-60 h-60 bg-[#6A5ACD] rounded-full blur-[100px] opacity-20 animate-pulse delay-3000 duration-[8000ms]"></div>
         </div>
 
-        <div className="max-w-3xl w-full space-y-12 text-center relative z-10">
+        <div className="max-w-3xl w-full space-y-8 text-center relative z-10">
           <div className="space-y-4">
-            <h1 className="text-5xl sm:text-7xl font-black uppercase tracking-tighter leading-none text-[#1A1A1A]/90 drop-shadow-sm">Museum of <span className="text-[#E94E34]">Mistakes</span></h1>
-            <p className="text-lg sm:text-xl font-bold bg-[#1A1A1A] text-white inline-block px-4 py-1 uppercase tracking-[0.2em] transform -rotate-1">Fine Art for Fumbling Curators</p>
+            <h1 className="text-4xl sm:text-7xl font-black uppercase tracking-tighter leading-none text-[#1A1A1A]/90 drop-shadow-sm">Museum of <span className="text-[#E94E34]">Mistakes</span></h1>
+            <p className="text-sm sm:text-xl font-bold bg-[#1A1A1A] text-white inline-block px-4 py-1 uppercase tracking-[0.2em] transform -rotate-1">Fine Art for Fumbling Curators</p>
           </div>
-          <div className={`bg-white p-8 sm:p-12 border-4 border-black ${COLORS.cardShadow} space-y-6 relative`}>
+          <div className={`bg-white p-6 sm:p-12 border-4 border-black ${COLORS.cardShadow} space-y-6 relative`}>
             {/* Geometric Decor */}
             <div className="absolute -top-6 -left-6 w-12 h-12 bg-[#2E5CAF] border-4 border-black"></div>
             <div className="absolute -bottom-6 -right-6 w-12 h-12 bg-[#E94E34] rounded-full border-4 border-black"></div>
             
-            <input type="text" placeholder="YOUR NAME" className="w-full p-6 bg-[#f4f1ea] border-4 border-black text-2xl font-black outline-none focus:bg-white uppercase placeholder:text-slate-400" value={name} onChange={e => setName(e.target.value)} />
-            <input type="text" placeholder="ROOM CODE" className="w-full p-6 bg-[#f4f1ea] border-4 border-black text-center font-mono text-3xl tracking-[0.5em] uppercase outline-none focus:bg-white placeholder:text-slate-400" value={roomId} onChange={e => setRoomId(e.target.value)} />
+            <input type="text" placeholder="YOUR NAME" className="w-full p-4 bg-[#f4f1ea] border-4 border-black text-xl font-black outline-none focus:bg-white uppercase placeholder:text-slate-400" value={name} onChange={e => setName(e.target.value)} />
+            <input type="text" placeholder="ROOM CODE" className="w-full p-4 bg-[#f4f1ea] border-4 border-black text-center font-mono text-2xl tracking-[0.2em] uppercase outline-none focus:bg-white placeholder:text-slate-400" value={roomId} onChange={e => setRoomId(e.target.value)} />
             
-            <button onClick={() => joinGame(roomId)} disabled={!name || !roomId} className={`w-full py-6 bg-[#2E5CAF] text-white text-3xl hover:bg-[#1e3a8a] ${COMMON_BTN}`}>ENTER GALLERY</button>
+            <button onClick={() => joinGame(roomId)} disabled={!name || !roomId} className={`w-full py-4 bg-[#2E5CAF] text-white text-2xl hover:bg-[#1e3a8a] ${COMMON_BTN}`}>ENTER GALLERY</button>
             
             <div className="flex items-center gap-4 text-slate-400 py-2 font-bold uppercase"><hr className="flex-1 border-2 border-slate-300" /><span>OR</span><hr className="flex-1 border-2 border-slate-300" /></div>
             
@@ -713,6 +825,11 @@ export default function App() {
         {room?.phase === PHASES.RULES_MODAL && (
           <RulesModal isHost={true} onStart={() => startPhase(PHASES.STUDIO_DRAW)} />
         )}
+
+        {/* Reaction Splats */}
+        {activeSplats.map(s => (
+            <Splat key={s.id} type={s.type} x={s.x} y={s.y} />
+        ))}
 
         <div className="flex justify-between items-start z-10 mb-8">
           <div>
@@ -772,8 +889,8 @@ export default function App() {
                   <div className="absolute -top-6 -left-6 bg-[#2E5CAF] text-white px-4 py-1 border-4 border-black font-black uppercase z-20 shadow-lg rotate-2">
                      LOT {auctionedCount + 1}/{totalToAuction}
                   </div>
-                  <div className="bg-[#f4f1ea] border-4 border-black flex-1 flex items-center justify-center p-4 mb-4 shadow-inner relative overflow-hidden">
-                     <img src={room.currentAuction.item.image} className="max-h-[50vh] object-contain shadow-xl" />
+                  <div className="bg-[#f4f1ea] border-4 border-black w-full aspect-square flex items-center justify-center p-4 mb-4 shadow-inner relative overflow-hidden">
+                     <img src={room.currentAuction.item.image} className="w-full h-full object-contain" />
                   </div>
                   <div className="flex justify-between items-center border-t-4 border-black pt-4">
                      <div>
@@ -818,26 +935,26 @@ export default function App() {
           )}
 
           {room?.phase === PHASES.PRESENTATION && (
-            <div className="w-full h-full flex flex-col items-center justify-center animate-in zoom-in duration-500 overflow-hidden">
+            <div className="w-full h-full flex flex-col items-center justify-center animate-in zoom-in duration-500 overflow-hidden relative">
               {players[room.presentingIdx] && (
                 <>
-                  <div className="text-center mb-6 shrink-0">
+                  <div className="text-center mb-6 shrink-0 z-10">
                     <div className="inline-block px-8 py-2 bg-[#1A1A1A] text-white font-black text-xl uppercase tracking-widest border-4 border-white shadow-xl mb-2 -rotate-2">Curated By: {players[room.presentingIdx].name}</div>
                     <h2 className="text-6xl font-black text-[#1A1A1A] uppercase leading-none tracking-tighter">"{players[room.presentingIdx].wingTitle}"</h2>
                   </div>
-                  <div className="flex w-full gap-4 justify-center items-center px-4 h-full max-h-[60vh]">
+                  <div className="flex w-full gap-8 justify-center items-center px-4 h-full max-h-[60vh] max-w-[90vw] z-10">
                     {players[room.presentingIdx].inventory.map((itemId, idx) => {
                        const item = items.find(i => i.id === itemId);
                        if (!item) return null;
                        return (
-                      <div key={item.id} className={`flex-1 h-full max-w-[32%] bg-white p-4 border-8 border-black ${COLORS.cardShadow} relative transform flex flex-col`}>
+                      <div key={item.id} className={`flex-1 h-full max-w-[30%] bg-white p-4 border-8 border-black ${COLORS.cardShadow} relative transform flex flex-col`}>
                         {/* Number Badge */}
                         <div className="absolute -top-4 -left-4 w-10 h-10 bg-[#F4D03F] border-4 border-black flex items-center justify-center font-black text-xl z-20">{idx + 1}</div>
                         
                         {item.returned && (
                           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 bg-[#E94E34] text-white px-8 py-4 font-black text-4xl border-8 border-white shadow-2xl z-30 opacity-90 animate-pulse uppercase">MISTAKE</div>
                         )}
-                        <div className="bg-[#f4f1ea] border-4 border-black p-2 mb-4 flex-1 flex items-center justify-center overflow-hidden">
+                        <div className="bg-[#f4f1ea] border-4 border-black w-full aspect-square p-2 mb-4 flex items-center justify-center overflow-hidden">
                           <img src={item.image} className="w-full h-full object-contain" />
                         </div>
                         <h4 className="text-2xl font-black uppercase text-[#1A1A1A] leading-none mb-1 truncate">{item.title}</h4>
@@ -929,19 +1046,21 @@ export default function App() {
           </div>
       )}
 
-      <div className="bg-[#1A1A1A] text-white p-3 flex justify-between items-center z-10 border-b-4 border-white shrink-0 shadow-lg">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#F4D03F] border-2 border-white flex items-center justify-center font-black text-black text-xl">{name ? name[0] : me?.name ? me.name[0] : '?'}</div>
-          <div>
-            <span className="font-black text-base uppercase tracking-tight block leading-none mb-1 truncate max-w-[100px]">{name || me?.name || 'Curator'}</span>
-            <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase font-bold tracking-widest">Inv: {me?.inventory?.length || 0}/3</div>
+      {room?.phase !== PHASES.STUDIO_DRAW && (
+        <div className="bg-[#1A1A1A] text-white p-3 flex justify-between items-center z-10 border-b-4 border-white shrink-0 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#F4D03F] border-2 border-white flex items-center justify-center font-black text-black text-xl">{name ? name[0] : me?.name ? me.name[0] : '?'}</div>
+            <div>
+              <span className="font-black text-base uppercase tracking-tight block leading-none mb-1 truncate max-w-[100px]">{name || me?.name || 'Curator'}</span>
+              <div className="flex items-center gap-1 text-[10px] text-slate-400 uppercase font-bold tracking-widest">Inv: {me?.inventory?.length || 0}/3</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 bg-white text-black px-3 py-1 border-2 border-slate-500">
+            <Coins size={16} className="text-[#E94E34]" />
+            <span className="font-mono font-black text-lg leading-none">${me?.cash || 0}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2 bg-white text-black px-3 py-1 border-2 border-slate-500">
-          <Coins size={16} className="text-[#E94E34]" />
-          <span className="font-mono font-black text-lg leading-none">${me?.cash || 0}</span>
-        </div>
-      </div>
+      )}
 
       <main className="flex-1 overflow-y-auto pb-24 relative z-10">
         {!room ? (
@@ -1116,12 +1235,23 @@ export default function App() {
         )}
       </main>
 
-      {/* Mobile Footer Nav */}
-      <div className="bg-white border-t-4 border-black p-6 flex justify-around items-center text-slate-300 shrink-0 z-10">
-         <div className={`flex flex-col items-center ${room?.phase?.includes('STUDIO') ? 'text-[#E94E34] scale-125' : 'grayscale opacity-30'} transition-all`}><Edit3 size={30} /></div>
-         <div className={`flex flex-col items-center ${room?.phase === PHASES.AUCTION ? 'text-[#E94E34] scale-125' : 'grayscale opacity-30'} transition-all`}><Gavel size={30} /></div>
-         <div className={`flex flex-col items-center ${room?.phase === PHASES.RESULTS ? 'text-[#E94E34] scale-125' : 'grayscale opacity-30'} transition-all`}><Award size={30} /></div>
-      </div>
+      {/* REACTION BAR (Mobile, Presentation Only) */}
+      {room?.phase === PHASES.PRESENTATION && (
+          <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4 z-50 pointer-events-auto">
+              <button onClick={() => sendReaction('TOMATO')} className="bg-white border-4 border-black rounded-full w-20 h-20 flex items-center justify-center text-4xl shadow-xl active:scale-95 transition-transform">🍅</button>
+              <button onClick={() => sendReaction('EGG')} className="bg-white border-4 border-black rounded-full w-20 h-20 flex items-center justify-center text-4xl shadow-xl active:scale-95 transition-transform">🥚</button>
+              <button onClick={() => sendReaction('ROSE')} className="bg-white border-4 border-black rounded-full w-20 h-20 flex items-center justify-center text-4xl shadow-xl active:scale-95 transition-transform">🌹</button>
+          </div>
+      )}
+
+      {/* Mobile Footer Nav (Hidden during drawing and presentation to clear space) */}
+      {room?.phase !== PHASES.STUDIO_DRAW && room?.phase !== PHASES.PRESENTATION && (
+        <div className="bg-white border-t-4 border-black p-6 flex justify-around items-center text-slate-300 shrink-0 z-10">
+           <div className={`flex flex-col items-center ${room?.phase?.includes('STUDIO') ? 'text-[#E94E34] scale-125' : 'grayscale opacity-30'} transition-all`}><Edit3 size={30} /></div>
+           <div className={`flex flex-col items-center ${room?.phase === PHASES.AUCTION ? 'text-[#E94E34] scale-125' : 'grayscale opacity-30'} transition-all`}><Gavel size={30} /></div>
+           <div className={`flex flex-col items-center ${room?.phase === PHASES.RESULTS ? 'text-[#E94E34] scale-125' : 'grayscale opacity-30'} transition-all`}><Award size={30} /></div>
+        </div>
+      )}
     </div>
   );
 }
