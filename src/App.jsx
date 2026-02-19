@@ -16,11 +16,7 @@ import {
   arrayUnion, 
   runTransaction,
   writeBatch,
-  getDocs,
-  addDoc,
-  query,
-  orderBy,
-  limit
+  getDocs
 } from 'firebase/firestore';
 import { 
   Palette, Trash2, Users, Timer, 
@@ -74,43 +70,6 @@ const COLORS = {
 };
 
 const COMMON_BTN = `relative border-4 border-black font-bold uppercase tracking-widest active:translate-y-1 active:shadow-none transition-all ${COLORS.buttonShadow}`;
-
-// --- Visual Effects (Splats) ---
-const Splat = ({ type, x, y }) => {
-  if (type === 'TOMATO') {
-    return (
-      <div style={{ left: `${x}%`, top: `${y}%` }} className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-1/2 animate-in zoom-in duration-100">
-        <svg width="200" height="200" viewBox="0 0 100 100" className="drop-shadow-lg opacity-90">
-           <path d="M50 50 C 20 20, 10 40, 20 60 C 10 80, 40 90, 50 80 C 70 90, 90 70, 80 50 C 90 30, 60 10, 50 20 Z" fill="#E94E34" />
-           <circle cx="50" cy="50" r="10" fill="#991b1b" opacity="0.5" />
-           <path d="M45 45 Q 50 40 55 45" stroke="#991b1b" strokeWidth="2" fill="none" />
-           <path d="M50 80 Q 50 90 48 95" stroke="#E94E34" strokeWidth="4" fill="none" />
-           <path d="M20 60 Q 15 70 18 75" stroke="#E94E34" strokeWidth="3" fill="none" />
-        </svg>
-      </div>
-    );
-  }
-  if (type === 'EGG') {
-    return (
-      <div style={{ left: `${x}%`, top: `${y}%` }} className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-1/2 animate-in zoom-in duration-100">
-        <svg width="180" height="180" viewBox="0 0 100 100" className="drop-shadow-lg opacity-95">
-           <path d="M50 50 C 30 30, 20 60, 40 80 C 60 90, 80 80, 90 60 C 90 40, 70 20, 50 50 Z" fill="#FFFFFF" />
-           <circle cx="55" cy="55" r="15" fill="#F4D03F" />
-           <circle cx="58" cy="52" r="4" fill="white" opacity="0.6" />
-        </svg>
-      </div>
-    );
-  }
-  if (type === 'ROSE') {
-    return (
-      <div style={{ left: `${x}%`, top: `${y}%` }} className="absolute z-50 pointer-events-none transform -translate-x-1/2 -translate-y-1/2 animate-in slide-in-from-bottom duration-1000 fade-out duration-1000">
-         <span className="text-8xl filter drop-shadow-xl">🌹</span>
-      </div>
-    );
-  }
-  return null;
-};
-
 
 // --- Components ---
 
@@ -307,14 +266,14 @@ const RulesModal = ({ isHost, onStart }) => (
             <div className="bg-[#2E5CAF] text-white w-12 h-12 flex items-center justify-center font-black text-2xl border-4 border-black shrink-0">1</div>
             <div>
               <h3 className="text-2xl font-black uppercase mb-1">Create</h3>
-              <p className="font-bold text-slate-600 leading-tight">Draw 3 masterpieces based on a series of prompts. No talent required, silly drawings welcomed.</p>
+              <p className="font-bold text-slate-600 leading-tight">Draw a masterpiece based on a series of prompts. No talent required.</p>
             </div>
           </div>
           <div className="flex gap-4 items-start">
             <div className="bg-[#F4D03F] text-black w-12 h-12 flex items-center justify-center font-black text-2xl border-4 border-black shrink-0">2</div>
             <div>
               <h3 className="text-2xl font-black uppercase mb-1">Appraise</h3>
-              <p className="font-bold text-slate-600 leading-tight">Write prestigious/crazy titles and descriptions for someone else's art.</p>
+              <p className="font-bold text-slate-600 leading-tight">Write titles and descriptions for someone else's art to elevate the masterpiece.</p>
             </div>
           </div>
         </div>
@@ -322,15 +281,15 @@ const RulesModal = ({ isHost, onStart }) => (
           <div className="flex gap-4 items-start">
             <div className="bg-[#6A5ACD] text-white w-12 h-12 flex items-center justify-center font-black text-2xl border-4 border-black shrink-0">3</div>
             <div>
-              <h3 className="text-2xl font-black uppercase mb-1">Bid & Win</h3>
-              <p className="font-bold text-slate-600 leading-tight">Bid cash to collect art. You only have $1,000 and can only have 3 pieces in your exhibit, so bid wisely! </p>
+              <h3 className="text-2xl font-black uppercase mb-1">Bid</h3>
+              <p className="font-bold text-slate-600 leading-tight">Bid to collect art. You only have $1,000 and can only have 3 pieces, so bid wisely!</p>
             </div>
           </div>
           <div className="flex gap-4 items-start">
             <div className="bg-[#E94E34] text-white w-12 h-12 flex items-center justify-center font-black text-2xl border-4 border-black shrink-0">4</div>
             <div>
-              <h3 className="text-2xl font-black uppercase mb-1">Winning and Losing</h3>
-              <p className="font-bold text-slate-600 leading-tight">Earn money when your art sells and split the comission with your fellow apraiser. Lose money when you don't get any bids. The more votes your gallery has, the more points you'll get.</p>
+              <h3 className="text-2xl font-black uppercase mb-1">Open Your Exhibit</h3>
+              <p className="font-bold text-slate-600 leading-tight">Name your exhibit, order your paintings, and get your friends to vote for you! You earn points by how many votes you get and points based off how much your pieces sold for.</p>
             </div>
           </div>
         </div>
@@ -367,16 +326,10 @@ export default function App() {
   const [submittedCuration, setSubmittedCuration] = useState(false);
   const [isBidding, setIsBidding] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
-  
-  // Reaction State
-  const [activeSplats, setActiveSplats] = useState([]);
-  const [hecklesUsed, setHecklesUsed] = useState(0);
 
   // Audio Refs
   const introAudioRef = useRef(null);
   const auctionAudioRef = useRef(null);
-  const goodAudioRef = useRef(null);
-  const badAudioRef = useRef(null);
 
   const me = useMemo(() => players.find(p => p.id === user?.uid), [players, user?.uid]);
 
@@ -398,70 +351,9 @@ export default function App() {
     const unsubRoom = onSnapshot(doc(db, ...roomPath), (doc) => { if (doc.exists()) setRoom({ id: doc.id, ...doc.data() }); });
     const unsubPlayers = onSnapshot(collection(db, ...roomPath, 'players'), (snap) => { setPlayers(snap.docs.map(d => ({ id: d.id, ...d.data() }))); });
     const unsubItems = onSnapshot(collection(db, ...roomPath, 'items'), (snap) => { setItems(snap.docs.map(d => ({ id: d.id, ...d.data() }))); });
-    
-    // Listen for reactions
-    const q = query(collection(db, ...roomPath, 'reactions'), orderBy('timestamp', 'desc'), limit(1));
-    const unsubReactions = onSnapshot(q, (snapshot) => {
-       snapshot.docChanges().forEach((change) => {
-          if (change.type === 'added') {
-             const data = change.doc.data();
-             // Only process if recent (within 2 seconds) to prevent blast on reload
-             if (Date.now() - data.timestamp < 3000) {
-                 handleReaction(data.type);
-             }
-          }
-       });
-    });
 
-    return () => { unsubRoom(); unsubPlayers(); unsubItems(); unsubReactions(); };
+    return () => { unsubRoom(); unsubPlayers(); unsubItems(); };
   }, [roomId, user]);
-
-  // Reset Heckles when presenter changes
-  useEffect(() => {
-      setHecklesUsed(0);
-  }, [room?.presentingIdx]);
-
-  const handleReaction = (type) => {
-      // Only host needs to visually render and play sound, but we render on host view only below
-      if (view !== 'host') return;
-
-      // Play Sound
-      if (type === 'ROSE') {
-         if (goodAudioRef.current) {
-            goodAudioRef.current.currentTime = 0;
-            goodAudioRef.current.play().catch(()=>{});
-         }
-      } else {
-         if (badAudioRef.current) {
-            badAudioRef.current.currentTime = 0;
-            badAudioRef.current.play().catch(()=>{});
-         }
-      }
-
-      // Add Splat Visual
-      const id = Date.now() + Math.random();
-      const x = 20 + Math.random() * 60; // Keep roughly central
-      const y = 20 + Math.random() * 60;
-      setActiveSplats(prev => [...prev, { id, type, x, y }]);
-      
-      // Remove after 2 seconds
-      setTimeout(() => {
-          setActiveSplats(prev => prev.filter(s => s.id !== id));
-      }, 2000);
-  };
-
-  const sendReaction = async (type) => {
-      if (!roomId || hecklesUsed >= 3) return;
-      
-      setHecklesUsed(prev => prev + 1);
-      if (navigator.vibrate) navigator.vibrate(50);
-      
-      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'reactions'), {
-          type,
-          timestamp: Date.now(),
-          sender: user.uid
-      });
-  };
 
   // Audio Control Logic (Host Only)
   useEffect(() => {
@@ -470,8 +362,6 @@ export default function App() {
     // Init audio objects if missing
     if (!introAudioRef.current) { introAudioRef.current = new Audio('/intro.mp3'); introAudioRef.current.loop = true; introAudioRef.current.volume = 0.3; }
     if (!auctionAudioRef.current) { auctionAudioRef.current = new Audio('/auction.mp3'); auctionAudioRef.current.loop = true; auctionAudioRef.current.volume = 0.4; }
-    if (!goodAudioRef.current) { goodAudioRef.current = new Audio('/good.m4a'); goodAudioRef.current.volume = 0.6; }
-    if (!badAudioRef.current) { badAudioRef.current = new Audio('/bad.m4a'); badAudioRef.current.volume = 0.6; }
 
     const introPhases = [PHASES.LOBBY, PHASES.RULES_MODAL, PHASES.STUDIO_DRAW, PHASES.STUDIO_APPRAISE];
     const actionPhases = [PHASES.AUCTION, PHASES.CURATION, PHASES.PRESENTATION, PHASES.VOTING, PHASES.RESULTS];
@@ -527,7 +417,7 @@ export default function App() {
           updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentationTimer: room.presentationTimer - 1 });
         } else {
           if (currentIdx < players.length - 1) {
-            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentingIdx: currentIdx + 1, presentationTimer: 20 }); // Increased time for reactions
+            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentingIdx: currentIdx + 1, presentationTimer: 20 }); 
           } else { 
             startPhase(PHASES.VOTING); 
           }
@@ -730,9 +620,6 @@ export default function App() {
     const itemSnaps = await getDocs(collection(roomRef, 'items'));
     const batch = writeBatch(db);
     itemSnaps.docs.forEach(d => batch.delete(d.ref));
-    const batch2 = writeBatch(db);
-    const reactionSnaps = await getDocs(collection(roomRef, 'reactions'));
-    reactionSnaps.docs.forEach(d => batch2.delete(d.ref));
     
     const commonPrompts = [...PROMPTS].sort(() => 0.5 - Math.random()).slice(0, 3);
     batch.update(roomRef, {
@@ -744,7 +631,6 @@ export default function App() {
       batch.update(pRef, { cash: 1000, pendingEarnings: 0, inventory: [], ready: false, votes: 0, wingTitle: '' });
     });
     await batch.commit();
-    await batch2.commit();
     setSubmittedCuration(false);
     setCurationOrder([]);
     setVoted(false);
@@ -832,11 +718,6 @@ export default function App() {
         {room?.phase === PHASES.RULES_MODAL && (
           <RulesModal isHost={true} onStart={() => startPhase(PHASES.STUDIO_DRAW)} />
         )}
-
-        {/* Reaction Splats */}
-        {activeSplats.map(s => (
-            <Splat key={s.id} type={s.type} x={s.x} y={s.y} />
-        ))}
 
         <div className="flex justify-between items-start z-10 mb-6 shrink-0">
           <div>
@@ -1244,33 +1125,8 @@ export default function App() {
         )}
       </main>
 
-      {/* REACTION BAR (Mobile, Presentation Only) */}
-      {room?.phase === PHASES.PRESENTATION && (
-          <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4 z-50 pointer-events-auto">
-              {['TOMATO', 'EGG', 'ROSE'].map((type, i) => (
-                  <button 
-                    key={type} 
-                    disabled={hecklesUsed >= 3}
-                    onClick={() => sendReaction(type)} 
-                    className={`bg-white border-4 border-black rounded-full w-20 h-20 flex items-center justify-center text-4xl shadow-xl transition-all ${hecklesUsed >= 3 ? 'opacity-50 grayscale cursor-not-allowed' : 'active:scale-95'}`}
-                  >
-                    {type === 'TOMATO' ? '🍅' : type === 'EGG' ? '🥚' : '🌹'}
-                  </button>
-              ))}
-          </div>
-      )}
-      
-      {/* Ammo Counter */}
-      {room?.phase === PHASES.PRESENTATION && (
-          <div className="absolute bottom-28 left-0 right-0 text-center pointer-events-none z-50">
-              <span className="bg-black text-white px-3 py-1 font-bold uppercase text-xs tracking-widest rounded-full border-2 border-white shadow-lg">
-                  Ammo: {3 - hecklesUsed}/3
-              </span>
-          </div>
-      )}
-
-      {/* Mobile Footer Nav (Hidden during drawing and presentation to clear space) */}
-      {room?.phase !== PHASES.STUDIO_DRAW && room?.phase !== PHASES.PRESENTATION && (
+      {/* Mobile Footer Nav (Hidden during drawing to clear space) */}
+      {room?.phase !== PHASES.STUDIO_DRAW && (
         <div className="bg-white border-t-4 border-black p-6 flex justify-around items-center text-slate-300 shrink-0 z-10">
            <div className={`flex flex-col items-center ${room?.phase?.includes('STUDIO') ? 'text-[#E94E34] scale-125' : 'grayscale opacity-30'} transition-all`}><Edit3 size={30} /></div>
            <div className={`flex flex-col items-center ${room?.phase === PHASES.AUCTION ? 'text-[#E94E34] scale-125' : 'grayscale opacity-30'} transition-all`}><Gavel size={30} /></div>
