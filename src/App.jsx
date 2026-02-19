@@ -257,10 +257,11 @@ const RulesModal = ({ isHost, onStart }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
     <div className={`bg-[#f4f1ea] w-full max-w-4xl p-8 border-8 border-black ${COLORS.cardShadow} animate-in zoom-in duration-300 relative`}>
       <div className="absolute -top-6 -left-6 bg-[#E94E34] text-white px-6 py-2 font-black text-xl border-4 border-black -rotate-2 shadow-[4px_4px_0px_0px_white]">
-        GALLERY RULES
+        THE MANIFESTO
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
+      
+<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
         <div className="space-y-6">
           <div className="flex gap-4 items-start">
             <div className="bg-[#2E5CAF] text-white w-12 h-12 flex items-center justify-center font-black text-2xl border-4 border-black shrink-0">1</div>
@@ -294,7 +295,7 @@ const RulesModal = ({ isHost, onStart }) => (
           </div>
         </div>
       </div>
-
+      
       <div className="mt-12 flex justify-center">
         {isHost ? (
           <button onClick={onStart} className={`px-12 py-6 bg-[#1A1A1A] text-white text-4xl hover:bg-[#E94E34] ${COMMON_BTN}`}>
@@ -417,7 +418,7 @@ export default function App() {
           updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentationTimer: room.presentationTimer - 1 });
         } else {
           if (currentIdx < players.length - 1) {
-            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentingIdx: currentIdx + 1, presentationTimer: 20 }); 
+            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentingIdx: currentIdx + 1, presentationTimer: 12 });
           } else { 
             startPhase(PHASES.VOTING); 
           }
@@ -713,24 +714,25 @@ export default function App() {
     const totalToAuction = items.filter(i => i.appraised).length;
 
     return (
-      <div className={`h-screen w-screen overflow-hidden flex flex-col p-8 relative ${COLORS.bg} font-sans text-slate-900 border-[16px] border-black`}>
+      <div className={`h-screen w-screen overflow-hidden flex flex-col p-4 sm:p-6 lg:p-8 relative ${COLORS.bg} font-sans text-slate-900 border-[16px] border-black`}>
         {/* Rules Modal Overlay */}
         {room?.phase === PHASES.RULES_MODAL && (
           <RulesModal isHost={true} onStart={() => startPhase(PHASES.STUDIO_DRAW)} />
         )}
 
-        <div className="flex justify-between items-start z-10 mb-6 shrink-0">
+        {/* COMPACT HEADER */}
+        <div className="flex justify-between items-start z-10 mb-4 shrink-0">
           <div>
-            <h1 className="text-5xl font-black text-[#1A1A1A] uppercase tracking-tighter leading-none">Museum of <span className="text-[#E94E34]">Modern</span> Mistakes</h1>
-            <p className="bg-[#F4D03F] inline-block px-2 mt-2 font-bold border-2 border-black uppercase tracking-widest text-sm">Main Gallery Display</p>
+            <h1 className="text-3xl lg:text-4xl font-black text-[#1A1A1A] uppercase tracking-tighter leading-none">Museum of <span className="text-[#E94E34]">Modern</span> Mistakes</h1>
+            <p className="bg-[#F4D03F] inline-block px-2 mt-1 font-bold border-2 border-black uppercase tracking-widest text-xs">Main Gallery Display</p>
           </div>
-          <div className={`bg-white p-6 border-4 border-black ${COLORS.buttonShadow} text-center`}>
-            <p className="text-xs font-black text-slate-400 uppercase tracking-tighter mb-1 leading-none">Room Code</p>
-            <p className="text-6xl font-black text-[#1A1A1A] tracking-tighter leading-none font-mono">{room?.id}</p>
+          <div className={`bg-white p-3 border-4 border-black ${COLORS.buttonShadow} text-center`}>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter mb-0 leading-none">Room Code</p>
+            <p className="text-3xl lg:text-4xl font-black text-[#1A1A1A] tracking-tighter leading-none font-mono">{room?.id}</p>
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 flex items-center justify-center relative w-full">
+        <div className="flex-1 min-h-0 w-full flex items-center justify-center relative">
           {/* Background shapes */}
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[#E94E34] rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
           <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-[#2E5CAF] mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
@@ -771,46 +773,46 @@ export default function App() {
 
           {room?.phase === PHASES.AUCTION && (
             room.currentAuction ? (
-              <div className="w-full h-full max-h-full grid grid-cols-12 gap-6 animate-in fade-in slide-in-from-bottom duration-500 pb-2">
+              <div className="flex-1 min-h-0 w-full grid grid-cols-12 gap-4 lg:gap-6 animate-in fade-in slide-in-from-bottom duration-500 pb-2">
                 {/* Artwork Card */}
-                <div className={`col-span-5 bg-white p-4 border-8 border-black ${COLORS.cardShadow} flex flex-col relative h-full`}>
+                <div className={`col-span-5 bg-white p-4 border-8 border-black ${COLORS.cardShadow} flex flex-col relative h-full min-h-0`}>
                   <div className="absolute -top-6 -left-6 bg-[#2E5CAF] text-white px-4 py-1 border-4 border-black font-black uppercase z-20 shadow-lg rotate-2">
                      LOT {auctionedCount + 1}/{totalToAuction}
                   </div>
-                  <div className="bg-[#f4f1ea] border-4 border-black flex-1 w-full flex items-center justify-center p-2 mb-2 shadow-inner relative overflow-hidden">
-                     <img src={room.currentAuction.item.image} className="w-full h-full object-contain" />
+                  <div className="bg-[#f4f1ea] border-4 border-black flex-1 min-h-0 w-full flex items-center justify-center p-2 mb-2 shadow-inner relative overflow-hidden">
+                     <img src={room.currentAuction.item.image} className="max-h-full max-w-full object-contain drop-shadow-md bg-white border-2 border-black/10" />
                   </div>
-                  <div className="flex justify-between items-center border-t-4 border-black pt-2 shrink-0">
+                  <div className="flex justify-between items-center border-t-4 border-black pt-2 shrink-0 w-full">
                      <div>
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Artist</p>
-                        <p className="text-xl font-black uppercase">{room.currentAuction.item.artistName}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Artist</p>
+                        <p className="text-lg font-black uppercase leading-tight">{room.currentAuction.item.artistName}</p>
                      </div>
                      <div className="text-right">
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Appraiser</p>
-                        <p className="text-xl font-black uppercase text-[#E94E34]">{room.currentAuction.appraiserName}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Appraiser</p>
+                        <p className="text-lg font-black uppercase text-[#E94E34] leading-tight">{room.currentAuction.appraiserName}</p>
                      </div>
                   </div>
                 </div>
 
                 {/* Info & Bidding */}
-                <div className="col-span-7 flex flex-col gap-6 h-full">
-                  <div className="flex-1 min-h-0 bg-white text-[#1A1A1A] p-8 border-8 border-black shadow-xl relative overflow-hidden flex flex-col">
-                     <h3 className="text-5xl font-black uppercase leading-tight relative z-10 mb-4 shrink-0">"{room.currentAuction.item.title || "Untitled"}"</h3>
-                     <div className="overflow-y-auto flex-1">
-                        <p className="text-2xl font-mono text-slate-600 leading-relaxed relative z-10 border-l-8 border-[#F4D03F] pl-6">"{room.currentAuction.item.history}"</p>
+                <div className="col-span-7 flex flex-col gap-4 lg:gap-6 min-h-0 h-full">
+                  <div className="flex-1 min-h-0 bg-white text-[#1A1A1A] p-6 border-8 border-black shadow-xl relative overflow-hidden flex flex-col">
+                     <h3 className="text-4xl lg:text-5xl font-black uppercase leading-tight relative z-10 mb-4 shrink-0">"{room.currentAuction.item.title || "Untitled"}"</h3>
+                     <div className="overflow-y-auto flex-1 pr-2">
+                        <p className="text-xl lg:text-2xl font-mono text-slate-600 leading-relaxed relative z-10 border-l-8 border-[#F4D03F] pl-6">"{room.currentAuction.item.history}"</p>
                      </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-6 shrink-0 h-40">
-                      <div className={`bg-[#F4D03F] p-4 border-8 border-black ${COLORS.buttonShadow} text-center flex flex-col justify-center`}>
-                         <p className="text-xl font-black uppercase tracking-widest mb-1">Current Bid</p>
-                         <p className="text-7xl font-black text-black font-mono">${room.currentAuction.highestBid}</p>
-                         <p className="text-xl font-black uppercase text-white bg-black inline-block mx-auto px-4 py-1 mt-2">{room.currentAuction.highestBidderName || "NO BIDS"}</p>
+                  <div className="grid grid-cols-2 gap-4 lg:gap-6 shrink-0">
+                      <div className={`bg-[#F4D03F] py-4 px-4 border-8 border-black ${COLORS.buttonShadow} text-center flex flex-col justify-center`}>
+                         <p className="text-sm font-black uppercase tracking-widest mb-1">Current Bid</p>
+                         <p className="text-5xl lg:text-7xl font-black text-black font-mono leading-none">${room.currentAuction.highestBid}</p>
+                         <div className="mt-2"><span className="text-sm lg:text-base font-black uppercase text-white bg-black px-3 py-1">{room.currentAuction.highestBidderName || "NO BIDS"}</span></div>
                       </div>
                       
-                      <div className={`bg-white p-4 border-8 border-black ${COLORS.buttonShadow} flex flex-col items-center justify-center relative`}>
-                         <Timer size={50} className={`mb-2 ${room.currentAuction.timer < 5 ? 'text-[#E94E34] animate-ping' : 'text-black'}`} />
-                         <span className="text-7xl font-black font-mono">{room.currentAuction.timer}s</span>
+                      <div className={`bg-white py-4 px-4 border-8 border-black ${COLORS.buttonShadow} flex flex-col items-center justify-center relative`}>
+                         <Timer size={30} className={`mb-1 ${room.currentAuction.timer < 5 ? 'text-[#E94E34] animate-ping' : 'text-black'}`} />
+                         <span className="text-5xl lg:text-7xl font-black font-mono leading-none">{room.currentAuction.timer}s</span>
                       </div>
                   </div>
                 </div>
@@ -825,30 +827,33 @@ export default function App() {
           )}
 
           {room?.phase === PHASES.PRESENTATION && (
-            <div className="w-full h-full flex flex-col items-center justify-center animate-in zoom-in duration-500 overflow-hidden relative">
+            <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-center animate-in zoom-in duration-500 relative pb-2">
               {players[room.presentingIdx] && (
                 <>
-                  <div className="text-center mb-6 shrink-0 z-10">
-                    <div className="inline-block px-8 py-2 bg-[#1A1A1A] text-white font-black text-xl uppercase tracking-widest border-4 border-white shadow-xl mb-2 -rotate-2">Curated By: {players[room.presentingIdx].name}</div>
-                    <h2 className="text-6xl font-black text-[#1A1A1A] uppercase leading-none tracking-tighter">"{players[room.presentingIdx].wingTitle}"</h2>
+                  <div className="text-center mb-4 shrink-0 z-10">
+                    <div className="inline-block px-6 py-1 bg-[#1A1A1A] text-white font-black text-lg uppercase tracking-widest border-4 border-white shadow-xl mb-1 -rotate-2">Curated By: {players[room.presentingIdx].name}</div>
+                    <h2 className="text-5xl font-black text-[#1A1A1A] uppercase leading-none tracking-tighter">"{players[room.presentingIdx].wingTitle}"</h2>
                   </div>
-                  <div className="flex w-full gap-8 justify-center items-center px-4 h-full max-h-[60vh] max-w-[90vw] z-10">
+                  
+                  <div className="flex-1 min-h-0 flex w-full gap-4 lg:gap-8 justify-center items-center px-4 max-w-[95vw] z-10 pb-4">
                     {players[room.presentingIdx].inventory.map((itemId, idx) => {
                        const item = items.find(i => i.id === itemId);
                        if (!item) return null;
                        return (
-                      <div key={item.id} className={`flex-1 h-full max-w-[30%] bg-white p-4 border-8 border-black ${COLORS.cardShadow} relative transform flex flex-col`}>
-                        {/* Number Badge */}
+                      <div key={item.id} className={`flex-1 min-w-0 h-full bg-white p-3 lg:p-4 border-8 border-black ${COLORS.cardShadow} relative transform flex flex-col`}>
                         <div className="absolute -top-4 -left-4 w-10 h-10 bg-[#F4D03F] border-4 border-black flex items-center justify-center font-black text-xl z-20">{idx + 1}</div>
                         
                         {item.returned && (
-                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 bg-[#E94E34] text-white px-8 py-4 font-black text-4xl border-8 border-white shadow-2xl z-30 opacity-90 animate-pulse uppercase">MISTAKE</div>
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-12 bg-[#E94E34] text-white px-6 py-2 font-black text-3xl border-8 border-white shadow-2xl z-30 opacity-90 animate-pulse uppercase">MISTAKE</div>
                         )}
-                        <div className="bg-[#f4f1ea] border-4 border-black w-full aspect-square p-2 mb-4 flex items-center justify-center overflow-hidden">
-                          <img src={item.image} className="w-full h-full object-contain" />
+                        <div className="bg-[#f4f1ea] border-4 border-black w-full flex-1 min-h-0 p-2 mb-3 flex items-center justify-center overflow-hidden">
+                          <img src={item.image} className="max-h-full max-w-full object-contain" />
                         </div>
-                        <h4 className="text-2xl font-black uppercase text-[#1A1A1A] leading-none mb-1 truncate">{item.title}</h4>
-                        <p className="text-sm font-mono text-slate-500 leading-tight border-t-4 border-black pt-2 line-clamp-3">"{item.history}"</p>
+                        
+                        <div className="shrink-0 flex flex-col pt-2 border-t-4 border-black">
+                            <h4 className="text-xl lg:text-2xl font-black uppercase text-[#1A1A1A] leading-tight mb-1 truncate">{item.title}</h4>
+                            <p className="text-xs lg:text-sm font-mono text-slate-600 leading-snug line-clamp-3">"{item.history}"</p>
+                        </div>
                       </div>
                     )})}
                   </div>
@@ -875,13 +880,13 @@ export default function App() {
           )}
 
           {room?.phase === PHASES.RESULTS && (
-            <div className="w-full max-w-6xl flex flex-col items-center h-full">
-              <h2 className="text-8xl font-black text-center mb-8 uppercase tracking-tighter flex items-center gap-6"><Trophy size={100} className="text-[#F4D03F]" /> Final Standings</h2>
-              <div className="w-full space-y-4 overflow-y-auto pr-4 pb-20">
+            <div className="flex-1 min-h-0 w-full max-w-6xl flex flex-col items-center pb-4">
+              <h2 className="text-5xl lg:text-6xl font-black text-center mb-6 uppercase tracking-tighter flex items-center gap-4 shrink-0"><Trophy size={60} className="text-[#F4D03F]" /> Final Standings</h2>
+              
+              <div className="w-full flex-1 min-h-0 overflow-y-auto space-y-4 pr-4">
                 {[...players].sort((a,b) => {
                   const getScore = (p) => {
                     const mistakePenalty = items.filter(i => i.returned && i.artistId === p.id).length * 100;
-                    // Total Score = Remaining Cash + Vote Bonus + Profit Share - Penalties
                     return (p.cash || 0) + (p.votes || 0) * 200 + (p.pendingEarnings || 0) - mistakePenalty;
                   };
                   return getScore(b) - getScore(a);
@@ -889,24 +894,25 @@ export default function App() {
                   const mistakePenalty = items.filter(i => i.returned && i.artistId === p.id).length * 100;
                   const totalScore = (p.cash || 0) + (p.votes || 0) * 200 + (p.pendingEarnings || 0) - mistakePenalty;
                   return (
-                    <div key={p.id} className={`bg-white p-6 border-4 border-black ${COLORS.buttonShadow} flex items-center justify-between group hover:bg-[#F4D03F] transition-colors`}>
-                      <div className="flex items-center gap-8">
-                        <span className={`text-6xl font-black ${i===0 ? 'text-[#E94E34]' : 'text-black'}`}>#{i+1}</span>
+                    <div key={p.id} className={`bg-white p-4 lg:p-6 border-4 border-black ${COLORS.buttonShadow} flex items-center justify-between group hover:bg-[#F4D03F] transition-colors shrink-0`}>
+                      <div className="flex items-center gap-6">
+                        <span className={`text-4xl lg:text-6xl font-black ${i===0 ? 'text-[#E94E34]' : 'text-black'}`}>#{i+1}</span>
                         <div>
-                          <h3 className="text-4xl font-black text-[#1A1A1A] uppercase">{p.name}</h3>
-                          <div className="flex gap-6 text-sm font-bold uppercase tracking-widest mt-1">
-                             <span className="bg-[#2E5CAF] text-white px-2">Votes: {p.votes || 0}</span>
-                             <span className="bg-[#1A1A1A] text-white px-2">Cash: ${p.cash}</span>
-                             {p.pendingEarnings > 0 && <span className="bg-[#E94E34] text-white px-2">Profit: +${p.pendingEarnings}</span>}
+                          <h3 className="text-3xl lg:text-4xl font-black text-[#1A1A1A] uppercase leading-none mb-1">{p.name}</h3>
+                          <div className="flex flex-wrap gap-2 lg:gap-4 text-xs lg:text-sm font-bold uppercase tracking-widest mt-1">
+                             <span className="bg-[#2E5CAF] text-white px-2 py-0.5">Votes: {p.votes || 0}</span>
+                             <span className="bg-[#1A1A1A] text-white px-2 py-0.5">Cash: ${p.cash}</span>
+                             {p.pendingEarnings > 0 && <span className="bg-[#E94E34] text-white px-2 py-0.5">Profit: +${p.pendingEarnings}</span>}
                           </div>
                         </div>
                       </div>
-                      <div className="text-6xl font-black font-mono tracking-tighter">${totalScore}</div>
+                      <div className="text-4xl lg:text-6xl font-black font-mono tracking-tighter">${totalScore}</div>
                     </div>
                   );
                 })}
               </div>
-              <button onClick={resetRoom} className={`absolute bottom-8 right-8 px-8 py-4 bg-[#1A1A1A] text-white text-2xl hover:bg-[#E94E34] ${COMMON_BTN} flex items-center gap-4`}>NEW EXHIBITION <RefreshCw /></button>
+
+              <button onClick={resetRoom} className={`shrink-0 mt-6 px-8 py-4 bg-[#1A1A1A] text-white text-xl lg:text-2xl ${COMMON_BTN} flex items-center gap-3`}>NEW EXHIBITION <RefreshCw size={24} /></button>
             </div>
           )}
         </div>
@@ -1012,7 +1018,7 @@ export default function App() {
                           const t = document.getElementById('appraisal-title').value;
                           const h = document.getElementById('appraisal-history').value;
                           if (t && h) submitAppraisal(item.id, t, h);
-                        }} className={`w-full py-6 bg-[#1A1A1A] text-white text-2xl hover:bg-[#E94E34] ${COMMON_BTN}`}
+                        }} className={`w-full py-6 bg-[#1A1A1A] text-white text-2xl active:translate-y-1 active:shadow-none transition-all ${COLORS.buttonShadow}`}
                       >CERTIFY</button>
                     </div>
                   </div>
@@ -1043,7 +1049,7 @@ export default function App() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 {[10, 25, 50, 100].map(amt => (
-                  <button key={amt} disabled={isBidding || (me?.inventory?.length || 0) >= 3 || room.currentAuction.highestBidder === user.uid} onClick={() => placeBid((room.currentAuction.highestBid || 0) + amt)} className={`py-6 bg-white text-[#1A1A1A] text-3xl hover:bg-[#2E5CAF] hover:text-white disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none ${COMMON_BTN}`}>+${amt}</button>
+                  <button key={amt} disabled={isBidding || (me?.inventory?.length || 0) >= 3 || room.currentAuction.highestBidder === user.uid} onClick={() => placeBid((room.currentAuction.highestBid || 0) + amt)} className={`py-6 bg-white text-[#1A1A1A] text-3xl disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none ${COMMON_BTN}`}>+${amt}</button>
                 ))}
               </div>
             </div>
@@ -1077,7 +1083,7 @@ export default function App() {
                       })}
                     </div>
                   </div>
-                  <button onClick={() => { const titleInput = document.getElementById('w-title'); const title = titleInput ? titleInput.value : "Exhibition"; const finalOrder = curationOrder.length > 0 ? curationOrder : (me?.inventory || []); updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { wingTitle: title || "Exhibition", inventory: finalOrder, ready: true }); setSubmittedCuration(true); }} className={`w-full py-6 bg-[#1A1A1A] text-white text-2xl hover:bg-[#2E5CAF] ${COMMON_BTN}`}>OPEN GALLERY</button>
+                  <button onClick={() => { const titleInput = document.getElementById('w-title'); const title = titleInput ? titleInput.value : "Exhibition"; const finalOrder = curationOrder.length > 0 ? curationOrder : (me?.inventory || []); updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { wingTitle: title || "Exhibition", inventory: finalOrder, ready: true }); setSubmittedCuration(true); }} className={`w-full py-6 bg-[#1A1A1A] text-white text-2xl active:translate-y-1 active:shadow-none transition-all ${COLORS.buttonShadow}`}>OPEN GALLERY</button>
                 </div>
               </>
             ) : (
@@ -1102,7 +1108,7 @@ export default function App() {
             </div>
             <div className="space-y-4">
               {players.filter(p => p.id !== user.uid && p.wingTitle).map(p => (
-                <button key={p.id} onClick={async () => { if (navigator.vibrate) navigator.vibrate(100); const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', p.id); const snap = await getDoc(pRef); await updateDoc(pRef, { votes: (snap.data().votes || 0) + 1 }); setVoted(true); updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true }); }} className={`w-full bg-white p-4 border-4 border-black text-left flex items-center gap-4 hover:bg-[#F4D03F] ${COMMON_BTN}`}>
+                <button key={p.id} onClick={async () => { if (navigator.vibrate) navigator.vibrate(100); const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', p.id); const snap = await getDoc(pRef); await updateDoc(pRef, { votes: (snap.data().votes || 0) + 1 }); setVoted(true); updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true }); }} className={`w-full bg-white p-4 border-4 border-black text-left flex items-center gap-4 active:translate-y-1 active:shadow-none transition-all ${COLORS.buttonShadow}`}>
                     <div className="w-16 h-16 bg-white border-2 border-black p-1 overflow-hidden shrink-0">
                         <img src={items.find(i => (p.inventory || []).includes(i.id))?.image} className="w-full h-full object-contain" />
                     </div>
