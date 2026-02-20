@@ -260,8 +260,7 @@ const RulesModal = ({ isHost, onStart }) => (
         THE MANIFESTO
       </div>
       
-      
-<div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
         <div className="space-y-6">
           <div className="flex gap-4 items-start">
             <div className="bg-[#2E5CAF] text-white w-12 h-12 flex items-center justify-center font-black text-2xl border-4 border-black shrink-0">1</div>
@@ -295,7 +294,7 @@ const RulesModal = ({ isHost, onStart }) => (
           </div>
         </div>
       </div>
-      
+
       <div className="mt-12 flex justify-center">
         {isHost ? (
           <button onClick={onStart} className={`px-12 py-6 bg-[#1A1A1A] text-white text-4xl hover:bg-[#E94E34] ${COMMON_BTN}`}>
@@ -441,7 +440,7 @@ export default function App() {
               highestBid: 0,
               highestBidder: null,
               highestBidderName: null,
-              timer: 20 
+              timer: 10 
             }
           });
         } else if (items.length > 0 && items.every(i => i.auctioned)) {
@@ -574,7 +573,7 @@ export default function App() {
         const rSnap = await transaction.get(rRef);
         const current = rSnap.data().currentAuction;
         if (!current || current.itemId !== auctionItemId || amount <= current.highestBid) throw new Error();
-        transaction.update(rRef, { 'currentAuction.highestBid': amount, 'currentAuction.highestBidder': user.uid, 'currentAuction.highestBidderName': name || curMe.name, 'currentAuction.timer': 10 });
+        transaction.update(rRef, { 'currentAuction.highestBid': amount, 'currentAuction.highestBidder': user.uid, 'currentAuction.highestBidderName': name || curMe.name, 'currentAuction.timer': 5 });
       });
     } catch (e) { /* ignore retry */ }
     setIsBidding(false);
@@ -775,7 +774,7 @@ export default function App() {
             room.currentAuction ? (
               <div className="flex-1 min-h-0 w-full grid grid-cols-12 gap-4 lg:gap-6 animate-in fade-in slide-in-from-bottom duration-500 pb-2">
                 {/* Artwork Card */}
-                <div className={`col-span-5 bg-white p-4 border-8 border-black ${COLORS.cardShadow} flex flex-col relative h-full min-h-0`}>
+                <div className={`col-span-5 bg-white p-4 border-8 border-black ${COLORS.cardShadow} flex flex-col relative h-full min-h-0 items-center`}>
                   <div className="absolute -top-6 -left-6 bg-[#2E5CAF] text-white px-4 py-1 border-4 border-black font-black uppercase z-20 shadow-lg rotate-2">
                      LOT {auctionedCount + 1}/{totalToAuction}
                   </div>
@@ -1049,7 +1048,7 @@ export default function App() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 {[10, 25, 50, 100].map(amt => (
-                  <button key={amt} disabled={isBidding || (me?.inventory?.length || 0) >= 3 || room.currentAuction.highestBidder === user.uid} onClick={() => placeBid((room.currentAuction.highestBid || 0) + amt)} className={`py-6 bg-white text-[#1A1A1A] text-3xl disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none ${COMMON_BTN}`}>+${amt}</button>
+                  <button key={amt} disabled={isBidding || (me?.inventory?.length || 0) >= 3 || room.currentAuction.highestBidder === user.uid} onClick={() => placeBid((room.currentAuction.highestBid || 0) + amt)} className={`py-6 bg-white text-[#1A1A1A] text-3xl active:translate-y-1 active:shadow-none transition-all disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none ${COLORS.buttonShadow}`}>+${amt}</button>
                 ))}
               </div>
             </div>
