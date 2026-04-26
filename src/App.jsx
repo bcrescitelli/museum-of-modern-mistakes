@@ -17,8 +17,13 @@ import {
   arrayUnion, 
   runTransaction,
   writeBatch,
-  getDocs
+  getDocs,
+  collectionGroup, 
+  query, 
+  orderBy, 
+  limit
 } from 'firebase/firestore';
+import { getAnalytics, logEvent } from 'firebase/analytics';
 import { 
   Palette, Trash2, Users, Timer, 
   Gavel, ImageIcon, Award, CheckSquare,
@@ -388,6 +393,45 @@ const RulesModal = ({ isHost, onStart }) => (
   </div>
 );
 
+const AdminGallery = ({ db, appId }) => {
+  const [allArt, setAllArt] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchArt = async () => {
+      try {
+        const artQuery = query(collectionGroup(db, 'items'), orderBy('pricePaid', 'desc'), limit(100));
+        const snapshot = await getDocs(artQuery);
+        setAllArt(snapshot.docs.map(doc => doc.data()));
+      } catch (e) {
+        console.error("FIREBASE INDEX ERROR: Check your browser console for the link to build the index!", e);
+      }
+      setLoading(false);
+    };
+    fetchArt();
+  }, [db, appId]);
+
+  if (loading) return <div className="min-h-[100dvh] flex items-center justify-center bg-[#f4f1ea] font-black text-4xl uppercase">Opening Vault...</div>;
+
+  return (
+    <div className="min-h-[100dvh] bg-[#f4f1ea] p-8 font-sans text-slate-900">
+      <h1 className="text-5xl font-black uppercase mb-8 text-center tracking-tighter">Global Museum Vault</h1>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {allArt.map((item, i) => (
+          <div key={i} className="bg-white border-4 border-black p-4 shadow-[8px_8px_0px_0px_rgba(26,26,26,1)] flex flex-col">
+            <div className="bg-[#f4f1ea] border-4 border-black w-full aspect-square mb-4 p-2 flex items-center justify-center">
+              <img src={item.image} className="max-h-full max-w-full object-contain mix-blend-multiply" />
+            </div>
+            <h3 className="text-xl font-black uppercase leading-tight truncate">"{item.title || "Untitled"}"</h3>
+            <p className="text-xs font-bold text-slate-500 uppercase mt-1">Artist: <span className="text-[#E94E34]">{item.artistName}</span></p>
+            <p className="text-lg font-black font-mono text-[#2E5CAF] mt-2">${item.pricePaid || 0}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // --- Main App ---
 
 export default function App() {
@@ -627,12 +671,20 @@ export default function App() {
     await updateDoc(roomRef, { currentAuction: null });
   };
 
-  const startPhase = async (phase) => {
+const startPhase = async (phase) => {
     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
     const batch = writeBatch(db);
     batch.update(roomRef, { phase, phaseStartedAt: Date.now(), presentingIdx: 0, presentationTimer: 12 });
     players.forEach(p => { batch.update(doc(roomRef, 'players', p.id), { ready: false }); });
     await batch.commit();
+
+    // Send data to Google Analytics
+    if (typeof window !== "undefined" && window.analytics) {
+      logEvent(window.analytics, 'phase_started', { phase_name: phase, room_id: roomId });
+      if (phase === PHASES.RULES_MODAL) {
+        logEvent(window.analytics, 'game_started', { player_count: players.length });
+      }
+    }
   };
 
   const placeBid = async (amount) => {
@@ -666,8 +718,15 @@ export default function App() {
     setRoomId(code); setView('host');
   };
 
-  const joinGame = async (code) => {
+const joinGame = async (code) => {
     const formattedCode = code.toUpperCase();
+    
+    // Secret Admin Login
+    if (formattedCode === "ADMIN") {
+      setView('admin');
+      return;
+    }
+
     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', formattedCode);
     const snap = await getDoc(roomRef);
     if (!snap.exists()) { setStatusMsg("Invalid Room"); return; }
@@ -749,6 +808,10 @@ export default function App() {
               <h2 className="text-2xl font-black uppercase tracking-widest">Loading Gallery...</h2>
           </div>
       );
+  }
+
+if (view === 'admin') {
+    return <AdminGallery db={db} appId={appId} />;
   }
 
   if (view === 'landing') {
