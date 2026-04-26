@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAnalytics } from 'firebase/analytics';
 import { 
   getAuth, 
   signInAnonymously, 
@@ -44,7 +43,7 @@ const firebaseConfig = {
 
 const appId = 'museum-modern-mistakes';
 const app = initializeApp(firebaseConfig);
-const analytics = typeof window !== "undefined" ? getAnalytics(app) : null; // <-- ADDED THIS
+window.analytics = typeof window !== "undefined" ? getAnalytics(app) : null; 
 const auth = getAuth(app);
 const db = getFirestore(app);
 
