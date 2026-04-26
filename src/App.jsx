@@ -22,7 +22,7 @@ import {
   Palette, Trash2, Users, Timer, 
   Gavel, ImageIcon, Award, CheckSquare,
   Trophy, Coins, AlertTriangle, History,
-  Edit3, Star, RefreshCw, Layers, Loader2
+  Edit3, Star, RefreshCw, Layers, Loader2, Download
 } from 'lucide-react';
 
 // --- Configuration ---
@@ -55,6 +55,62 @@ const PHASES = {
 const PROMPTS = ["A failed invention", "A cursed heirloom", "A luxury snack", "A DIY haircut gone wrong", "The world's smallest problem", "A suspicious gift", "An invisible pet", "A sentient appliance", "A forgotten time capsule", "Forbidden modern art", "A sandwich that looks like it’s judging you", "a pigeon in a tuxedo at a gala", "the physical embodiment of a Monday", "a haunted bouncy castle", "a cactus trying too hard to be sexy", "a Victorian child discovering a fidget spinner", "a cloud having a mid-life crisis", "a sentient pair of cargo shorts", "the tooth fairy’s day job", "a fish riding a bicycle poorly", "a house built entirely out of loose teeth", "a sleep-deprived sun", "a biblically accurate Furby", "a horse wearing high heels", "the coolest guy at the Renaissance Fair", "a baguette that is also a sword", "an octopus trying to use a laptop", "a very muscular strawberry", "a ghost trying to use a touchscreen", "a mailbox that eats hands", "a fashionable swamp monster", "a dog that is definitely three kids in a trench coat", "a birthday cake for someone you hate", "a rock star who is literally a rock", "the inside of a black hole’s junk drawer", "a squirrel planning a heist", "a toaster that only burns 'Help' into bread", "a yoga pose that is physically impossible", "a gnome who has seen too much", "a refrigerator that is secretly a portal", "a very polite spider", "a sneaker made of actual meat", "the world’s worst superhero", "a tea party for feral raccoons", "a baby with a full beard", "a mountain with a giant zipper", "a jazz-playing shrimp", "a pizza with illegal toppings", "a cat that is clearly a wizard", "a snowman in a tanning bed", "a hot dog that is a legal witness", "a tree growing money but it is all pennies", "a UFO that looks like a kitchen appliance", "a butterfly with human ears", "a cowboy who is also a centaur", "a skeleton at a spa", "a pineapple that is also a grenade", "a very aggressive dandelion", "a sofa that wants to eat you", "a mime fighting an invisible bear", "a gargoyle with a selfie stick", "a penguin at a tropical resort", "a banana peel’s revenge", "a robot trying to understand love", "a burger that is way too tall", "a lemon that just tasted something sour", "a wizard who is bad at magic", "a disco ball made of eyes", "a dragon who hoards used napkins", "a skateboard made of ice", "a shark in a business meeting", "a mailbox full of bees", "a crown made of hot dogs", "a vampire at a garlic festival", "a moon with a do not disturb sign", "a toilet that is also a throne", "a giraffe with a short neck", "a marshmallow getting toasted", "a pair of glasses for a wooden cyclops", "a guitar that is also a chainsaw", "a very fancy potato", "a spider with eight different shoes", "a worm wearing a scarf", "a candle that smells like regret", "a phone that is literally just a brick", "a beehive that is also a condo", "a turtle with a jetpack", "a steak that looks like a celebrity", "a grumpy raincloud", "a blender that is terrified of kale", "a car that runs on vibes", "a pirate who is afraid of water", "a watermelon with teeth", "a clock that tells you when you will die", "a mushroom with a hat", "a sock that lost its twin", "a very judgmental mirror", "a squirrel with a lightsaber", "a taco that is also a wallet", "a tree that grows hands instead of leaves", "a disco ball in a cave", "a ghost eating a slice of pizza", "a robot with a mid-life crisis", "a fish in a birdcage", "a volcano that erupts glitter", "a very buff pigeon", "a snowman at the beach", "a cactus that needs a hug", "a suitcase with legs", "a moon made of cheese", "a very fashionable Bigfoot", "a toaster that is also a camera", "a bird with human arms", "a very angry cupcake", "a snake wearing a sweater", "a bowling ball with a face", "a very fancy dumpster", "a lighthouse that is also a giant candle", "a teapot that is also a house", "a very cool worm", "a cat with a jetpack", "a very tall hat", "a dog in a space suit", "a very angry cloud", "a pizza with eyes", "a very fancy rat", "a ghost in a bikini", "a robot with a hat", "a very buff cat", "a fish with a hat", "a very fancy frog", "a ghost with a hat", "a robot with a dog", "a very angry sun", "a pizza with a hat", "a very fancy bird", "a ghost with a dog", "a robot with a cat", "a very angry moon", "a pizza with a cat", "a very fancy fish", "a ghost with a cat", "a robot with a hat", "a very angry star", "a pizza with a dog", "a very fancy snail", "a ghost with a bird", "a robot with a bird", "a very angry planet", "a pizza with a bird", "a very fancy lizard", "a ghost with a snail", "a robot with a snail", "a very angry comet", "a pizza with a snail", "a very fancy bug", "a ghost with a bug", "a robot with a bug", "a very angry asteroid", "a pizza with a bug", "a bowling ball having a nightmare", "a sentient jar of mayonnaise in a beauty pageant", "a gargoyle trying hide a sneeze", "an avocado with a realistic human eye", "a squirrel wearing tiny denim overalls", "a lawnmower that only eats four-leaf clovers", "a cloud that is actually just a big pile of mashed potatoes", "a skyscraper with a giant belly button", "a pigeon wearing a wire for the FBI", "a spider trying to knit a sweater", "a hot dog in a sleeping bag", "a tree growing human ears instead of leaves", "a toaster that is secretly a DJ", "a haunted box of raisins", "a very muscular goldfish", "a cowboy riding a giant shrimp", "a mime trapped in a real glass box", "a vampire at a blood drive with a coupon", "a pizza with a missing poster for the pepperoni", "a cat in a business suit giving a PowerPoint", "a snowman with a flamethrower", "a lemon with a six-pack", "a mailbox full of spaghetti", "a very polite monster under the bed", "a cactus trying to use a balloon animal", "a banana wearing a leather jacket", "a ghost trying to wear a backpack", "a robot trying to eat a salad", "a squirrel with a tiny megaphone", "a very fancy brick", "a dragon with a collection of rubber ducks", "a shark wearing a life vest", "a pineapple with a mohawk", "a very angry loaf of bread", "a turtle with a speed limit sign", "a ghost in a tuxedo", "a robot with a mid-life crisis and a sports car", "a fish with a snorkel", "a very buff butterfly", "a tree with a giant zipper", "a disco ball in a dumpster", "a very fancy rat in a tiny bathtub", "a snowman at a BBQ", "a cactus in a knitted sweater", "a suitcase with human legs and high heels", "a moon with a giant Band-Aid", "a very fashionable Bigfoot at brunch", "a toaster that only pops up live birds", "a bird with human hands for wings", "a very angry cupcake with a knife", "snake wearing a scarf and a monocle", "a bowling ball with a toupee", "a very fancy dumpster fire", "a lighthouse that is a giant flashlight", "a teapot that is a time machine", "a very cool worm with sunglasses and a skateboard", "a cat with a jetpack and a laser pointer", "a very tall hat with a smaller hat on top", "a dog in a space suit chasing a bone satellite", "a very angry cloud with lightning teeth", "a pizza with a face made of toppings", "a very fancy rat eating a tiny cheese plate", "a ghost in a polka dot bikini", "a robot with a cowboy hat and a lasso", "a very buff cat lifting a giant yarn ball", "a fish with a top hat and a cane", "a very fancy frog on a lily pad throne", "a ghost with a tiny pet ghost dog", "a robot with a mechanical cat", "a very angry sun with sunglasses", "a pizza with a tiny chef hat", "a very fancy bird with a pearl necklace", "a ghost with a suitcase and a map", "a robot with a tiny robot child", "a very angry moon with a nightcap", "a pizza with a cat face", "a very fancy fish in a tuxedo", "a ghost with an umbrella in the rain", "a robot with a birthday cake", "a very angry star with a frown", "a pizza with a dog face", "a very fancy snail with a glitter shell", "a ghost with a bird on its shoulder", "a robot with a pet bird", "a very angry planet with rings", "a pizza with a bird face", "a very fancy lizard in a suit", "a ghost with a pet snail", "a robot with a pet snail", "a very angry comet with a tail", "a pizza with a snail face", "a very fancy bug with a top hat", "a ghost with a pet bug", "a robot with a pet bug", "a very angry asteroid with eyes", "a pizza with a bug face", "a sentient cloud of bees holding a balloon", "a refrigerator running away from a kitchen", "a skeleton playing a ribcage like a xylophone", "a very fancy rock with a mustache"];
 
 const generateRoomCode = () => Math.random().toString(36).substring(2, 6).toUpperCase();
+
+const downloadArtwork = (item) => {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.src = item.image;
+  
+  img.onload = () => {
+    // Dimensions
+    const size = 1000; // High-res canvas width
+    const padding = 60;
+    const bottomArea = 300; 
+    canvas.width = size;
+    canvas.height = size + bottomArea;
+    
+    // Background (Cream)
+    ctx.fillStyle = '#f4f1ea';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Artwork Image Background (White)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(padding, padding, size - padding * 2, size - padding * 2);
+    
+    // Draw the actual drawing
+    ctx.drawImage(img, padding, padding, size - padding * 2, size - padding * 2);
+    
+    // Thick Black Border around the artwork
+    ctx.strokeStyle = '#1A1A1A';
+    ctx.lineWidth = 16;
+    ctx.strokeRect(padding, padding, size - padding * 2, size - padding * 2);
+    
+    // Title Text
+    ctx.fillStyle = '#1A1A1A';
+    ctx.font = '900 64px sans-serif'; 
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    const displayTitle = item.title ? `"${item.title.toUpperCase()}"` : '"UNTITLED"';
+    ctx.fillText(displayTitle, size / 2, size - padding + 50);
+    
+    // Watermark Text
+    ctx.fillStyle = '#E94E34'; // Bauhaus Red
+    ctx.font = '900 32px sans-serif';
+    ctx.fillText("Curated on museum.dirtylaundry.games", size / 2, size - padding + 150);
+    
+    ctx.fillStyle = '#2E5CAF'; // Geometric Blue
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText("play for free today!", size / 2, size - padding + 190);
+    
+    // Trigger the download
+    const link = document.createElement('a');
+    link.download = `${item.title ? item.title.replace(/\s+/g, '_') : 'mistake'}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
+};
 
 // --- Bauhaus Theme Constants ---
 const COLORS = {
@@ -1099,7 +1155,7 @@ export default function App() {
              <h3 className="text-3xl font-black text-black uppercase italic leading-tight">Exhibition Live</h3>
              <p className="font-bold uppercase tracking-widest text-xs bg-white border-2 border-black px-4 py-2">Look at the big screen</p>
           </div>
-        ) : room.phase === PHASES.VOTING && !voted ? (
+) : room.phase === PHASES.VOTING && !voted ? (
           <div className="p-6 space-y-6 animate-in slide-in-from-bottom shrink-0">
             <div className="text-center space-y-2">
                 <h2 className="text-5xl font-black uppercase italic tracking-tighter leading-none">Vote</h2>
@@ -1119,15 +1175,59 @@ export default function App() {
               ))}
             </div>
           </div>
-        ) : (
+        ) : room.phase === PHASES.VOTING && voted ? (
           <div className="p-16 text-center space-y-10 flex flex-col items-center justify-center min-h-[70vh] animate-in fade-in shrink-0">
               <div className="relative"><CheckSquare size={140} className="text-[#1A1A1A]" /><div className="absolute -bottom-2 -right-2 bg-[#F4D03F] text-black w-12 h-12 flex items-center justify-center font-black border-4 border-black text-2xl">✓</div></div>
               <div className="space-y-4">
-                  <h3 className="text-5xl font-black uppercase italic leading-none tracking-tighter">{voted ? "Vote Locked" : "Done!"}</h3>
+                  <h3 className="text-5xl font-black uppercase italic leading-none tracking-tighter">Vote Locked</h3>
                   <p className="font-bold uppercase tracking-[0.2em] text-sm text-center">Results Incoming</p>
               </div>
           </div>
-        )}
+        ) : room.phase === PHASES.RESULTS ? (
+          <div className="p-4 space-y-6 animate-in slide-in-from-bottom pb-10">
+            <div className="text-center space-y-2 py-4">
+                <h2 className="text-5xl font-black uppercase italic tracking-tighter leading-none">The Vault</h2>
+                <p className="font-black uppercase text-xs tracking-widest text-[#E94E34]">Most Valuable Mistakes</p>
+            </div>
+            <div className="space-y-6">
+              {[...items]
+                .filter(i => i.auctioned)
+                .sort((a, b) => (b.pricePaid || 0) - (a.pricePaid || 0))
+                .map((item, index) => (
+                <div key={item.id} className={`bg-white border-4 border-black ${COLORS.cardShadow} p-4 flex flex-col relative`}>
+                  <div className="absolute -top-4 -left-4 w-10 h-10 bg-[#F4D03F] border-4 border-black flex items-center justify-center font-black text-xl z-10">
+                    #{index + 1}
+                  </div>
+                  <div className="bg-[#f4f1ea] border-4 border-black w-full aspect-square mb-4 flex items-center justify-center p-2 relative">
+                    <img src={item.image} className="max-h-full max-w-full object-contain mix-blend-multiply" />
+                    {item.returned && (
+                       <div className="absolute inset-0 flex items-center justify-center bg-black/10 z-10">
+                          <span className="bg-[#E94E34] text-white px-4 py-1 font-black text-2xl border-4 border-white shadow-xl -rotate-12 uppercase opacity-90">Mistake</span>
+                       </div>
+                    )}
+                  </div>
+                  <div className="flex justify-between items-end mb-4">
+                    <div className="flex-1 overflow-hidden pr-2">
+                        <h4 className="text-2xl font-black uppercase leading-tight truncate">"{item.title || "Untitled"}"</h4>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Artist: {item.artistName}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Sold For</p>
+                        <p className="text-3xl font-black font-mono tracking-tighter text-[#2E5CAF] leading-none">${item.pricePaid || 0}</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => downloadArtwork(item)}
+                    className={`w-full py-3 bg-[#1A1A1A] text-white flex items-center justify-center gap-2 text-xl active:translate-y-1 active:shadow-none transition-all ${COLORS.buttonShadow}`}
+                  >
+                    <Download size={20} />
+                    SAVE PLACARD
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </main>
 
       {/* Mobile Footer Nav (Hidden during drawing to clear space) */}
