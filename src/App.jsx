@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { initializeApp } from 'firebase/app';
+import { getAnalytics } from 'firebase/analytics';
 import { 
   getAuth, 
   signInAnonymously, 
@@ -32,11 +33,13 @@ const firebaseConfig = {
   projectId: "museum-of-modern-mistakes",
   storageBucket: "museum-of-modern-mistakes.firebasestorage.app",
   messagingSenderId: "244324872382",
-  appId: "1:244324872382:web:955dc0385a1e4177f0eeef"
+  appId: "1:244324872382:web:955dc0385a1e4177f0eeef",
+  measurementId: "G-WLW6WD24GY" // <-- ADDED THIS FROM YOUR SCREENSHOT
 };
 
 const appId = 'museum-modern-mistakes';
 const app = initializeApp(firebaseConfig);
+const analytics = typeof window !== "undefined" ? getAnalytics(app) : null; // <-- ADDED THIS
 const auth = getAuth(app);
 const db = getFirestore(app);
 
@@ -104,11 +107,30 @@ const downloadArtwork = (item) => {
     ctx.font = 'bold 28px sans-serif';
     ctx.fillText("play for free today!", size / 2, size - padding + 190);
     
-    // Trigger the download
-    const link = document.createElement('a');
-    link.download = `${item.title ? item.title.replace(/\s+/g, '_') : 'mistake'}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    // NEW: Native Mobile Share Sheet Logic
+    canvas.toBlob((blob) => {
+      const fileName = `${item.title ? item.title.replace(/\s+/g, '_') : 'mistake'}.png`;
+      const file = new File([blob], fileName, { type: 'image/png' });
+
+      // Check if the device supports sharing files natively (Most modern phones do)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({
+          files: [file],
+          title: 'Museum of Mistakes',
+          text: 'Look at this masterpiece!'
+        }).catch((error) => {
+            console.log('Sharing failed or was cancelled', error);
+        });
+      } else {
+        // Fallback for Desktop Browsers (Standard Download)
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = fileName;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+    }, 'image/png');
   };
 };
 
@@ -965,6 +987,13 @@ export default function App() {
                     </div>
                   );
                 })}
+</div>
+
+              {/* Social & Feedback Callout */}
+              <div className="w-full mt-8 bg-[#f4f1ea] border-4 border-black p-4 lg:p-6 text-center shadow-[4px_4px_0px_0px_rgba(26,26,26,1)] shrink-0">
+                  <h4 className="text-2xl font-black uppercase italic tracking-tighter mb-2">Enjoying the Museum?</h4>
+                  <p className="font-bold text-slate-700 text-sm lg:text-base mb-4">Tag us in your masterpieces on TikTok <a href="https://tiktok.com/@dirtylaundrygames" target="_blank" rel="noreferrer" className="text-[#E94E34] underline">@dirtylaundrygames</a></p>
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-500">Have feedback or ideas? <a href="mailto:dirtylaundrygames@gmail.com" className="text-[#2E5CAF] underline">dirtylaundrygames@gmail.com</a></p>
               </div>
 
               <button onClick={resetRoom} className={`shrink-0 mt-6 px-8 py-4 bg-[#1A1A1A] text-white text-xl lg:text-2xl ${COMMON_BTN} flex items-center gap-3`}>NEW EXHIBITION <RefreshCw size={24} /></button>
