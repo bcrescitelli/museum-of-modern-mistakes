@@ -721,7 +721,7 @@ const joinGame = async (code) => {
     const formattedCode = code.toUpperCase();
     
     // Secret Admin Login
-    if (formattedCode === "ADMIN") {
+    if (formattedCode === "SUPERADMINCODE123") {
       setView('admin');
       return;
     }
