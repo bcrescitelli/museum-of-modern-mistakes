@@ -395,15 +395,21 @@ const RulesModal = ({ isHost, onStart }) => (
 const AdminGallery = ({ db, appId }) => {
   const [allArt, setAllArt] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [groupByGame, setGroupByGame] = useState(false); // Toggle state
 
   useEffect(() => {
     const fetchArt = async () => {
       try {
-        const artQuery = query(collectionGroup(db, 'items'), orderBy('pricePaid', 'desc'), limit(100));
+        const artQuery = query(collectionGroup(db, 'items'), orderBy('pricePaid', 'desc'), limit(250));
         const snapshot = await getDocs(artQuery);
-        setAllArt(snapshot.docs.map(doc => doc.data()));
+        
+        setAllArt(snapshot.docs.map(doc => ({
+            ...doc.data(),
+            // MAGIC TRICK: Grab the Room ID directly from the database path
+            roomId: doc.ref.parent.parent.id 
+        })));
       } catch (e) {
-        console.error("FIREBASE INDEX ERROR: Check your browser console for the link to build the index!", e);
+        console.error("FIREBASE INDEX ERROR: Check your browser console!", e);
       }
       setLoading(false);
     };
@@ -412,20 +418,68 @@ const AdminGallery = ({ db, appId }) => {
 
   if (loading) return <div className="min-h-[100dvh] flex items-center justify-center bg-[#f4f1ea] font-black text-4xl uppercase">Opening Vault...</div>;
 
-  return (
-    <div className="min-h-[100dvh] bg-[#f4f1ea] p-8 font-sans text-slate-900">
-      <h1 className="text-5xl font-black uppercase mb-8 text-center tracking-tighter">Global Museum Vault</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {allArt.map((item, i) => (
-          <div key={i} className="bg-white border-4 border-black p-4 shadow-[8px_8px_0px_0px_rgba(26,26,26,1)] flex flex-col">
-            <div className="bg-[#f4f1ea] border-4 border-black w-full aspect-square mb-4 p-2 flex items-center justify-center">
-              <img src={item.image} className="max-h-full max-w-full object-contain mix-blend-multiply" />
-            </div>
-            <h3 className="text-xl font-black uppercase leading-tight truncate">"{item.title || "Untitled"}"</h3>
-            <p className="text-xs font-bold text-slate-500 uppercase mt-1">Artist: <span className="text-[#E94E34]">{item.artistName}</span></p>
-            <p className="text-lg font-black font-mono text-[#2E5CAF] mt-2">${item.pricePaid || 0}</p>
+  // Function to group art by room code
+  const groupedArt = allArt.reduce((acc, item) => {
+      if (!acc[item.roomId]) acc[item.roomId] = [];
+      acc[item.roomId].push(item);
+      return acc;
+  }, {});
+
+  // Shared Artwork Card Design
+  const ArtCard = ({ item }) => (
+    <div className="bg-white border-4 border-black p-4 shadow-[8px_8px_0px_0px_rgba(26,26,26,1)] flex flex-col relative">
+      <div className="bg-[#f4f1ea] border-4 border-black w-full aspect-square mb-4 p-2 flex items-center justify-center">
+        <img src={item.image} className="max-h-full max-w-full object-contain mix-blend-multiply" />
+      </div>
+      <h3 className="text-xl font-black uppercase leading-tight truncate">"{item.title || "Untitled"}"</h3>
+      <div className="flex justify-between items-end mt-2 border-t-2 border-slate-100 pt-2">
+          <div>
+            <p className="text-[10px] font-bold text-slate-500 uppercase leading-none mb-1">Artist: <span className="text-[#E94E34]">{item.artistName}</span></p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase leading-none">
+              {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "Archived"}
+            </p>
           </div>
-        ))}
+          <p className="text-lg font-black font-mono text-[#2E5CAF] leading-none">${item.pricePaid || 0}</p>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-[100dvh] bg-[#f4f1ea] p-4 lg:p-8 font-sans text-slate-900 pb-20">
+      
+      {/* Header & Controls */}
+      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center mb-8 gap-4 border-b-8 border-black pb-6">
+          <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-center sm:text-left">Global Vault</h1>
+          
+          <button 
+              onClick={() => setGroupByGame(!groupByGame)}
+              className={`px-6 py-4 border-4 border-black font-black uppercase text-white tracking-widest active:translate-y-1 active:shadow-none transition-all shadow-[4px_4px_0px_0px_rgba(26,26,26,1)] ${groupByGame ? 'bg-[#E94E34]' : 'bg-[#2E5CAF]'}`}
+          >
+              {groupByGame ? "View: Top 250" : "View: By Game"}
+          </button>
+      </div>
+
+      {/* Grid Rendering */}
+      <div className="max-w-7xl mx-auto">
+        {groupByGame ? (
+            <div className="space-y-16">
+                {Object.entries(groupedArt).map(([roomCode, items]) => (
+                    <div key={roomCode} className="space-y-6">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-3xl font-black uppercase bg-[#F4D03F] border-4 border-black px-6 py-2 shadow-[4px_4px_0px_0px_rgba(26,26,26,1)]">Room: {roomCode}</h2>
+                            <span className="font-bold text-slate-500 uppercase tracking-widest text-sm">{items.length} Artifacts</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            {items.map((item, i) => <ArtCard key={i} item={item} />)}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {allArt.map((item, i) => <ArtCard key={i} item={item} />)}
+            </div>
+        )}
       </div>
     </div>
   );
@@ -772,14 +826,15 @@ const joinGame = async (code) => {
     setVoted(false);
   };
 
-  const handleDrawingSubmit = async (dataUrl) => {
+const handleDrawingSubmit = async (dataUrl) => {
     const itemCount = items.filter(i => i.artistId === user.uid).length;
     const prompts = room?.gamePrompts || PROMPTS;
     const itemRef = doc(collection(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items'));
     await setDoc(itemRef, {
       id: itemRef.id, artistId: user.uid, artistName: name || me?.name, image: dataUrl,
       prompt: prompts[itemCount] || PROMPTS[0],
-      title: '', history: '', appraised: false, ownerId: null, pricePaid: 0, auctioned: false, returned: false, appraiserId: null
+      title: '', history: '', appraised: false, ownerId: null, pricePaid: 0, auctioned: false, returned: false, appraiserId: null,
+      createdAt: Date.now() // <-- THIS SAVES THE DATE!
     });
     if (itemCount >= 2) {
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true });
