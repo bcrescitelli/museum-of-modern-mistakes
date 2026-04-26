@@ -400,7 +400,7 @@ const AdminGallery = ({ db, appId }) => {
   useEffect(() => {
     const fetchArt = async () => {
       try {
-        const artQuery = query(collectionGroup(db, 'items'), orderBy('pricePaid', 'desc'), limit(250));
+        const artQuery = query(collectionGroup(db, 'items'), orderBy('pricePaid', 'desc'), limit(1550));
         const snapshot = await getDocs(artQuery);
         
         setAllArt(snapshot.docs.map(doc => ({
