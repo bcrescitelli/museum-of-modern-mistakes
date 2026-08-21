@@ -59,7 +59,30 @@ const PHASES = {
   RESULTS: 'RESULTS'
 };
 
-const PROMPTS = ["A failed invention", "A cursed heirloom", "A luxury snack", "A DIY haircut gone wrong", "The world's smallest problem", "A suspicious gift", "An invisible pet", "A sentient appliance", "A forgotten time capsule", "Forbidden modern art", "A sandwich that looks like it’s judging you", "a pigeon in a tuxedo at a gala", "the physical embodiment of a Monday", "a haunted bouncy castle", "a cactus trying too hard to be sexy", "a Victorian child discovering a fidget spinner", "a cloud having a mid-life crisis", "a sentient pair of cargo shorts", "the tooth fairy’s day job", "a fish riding a bicycle poorly", "a house built entirely out of loose teeth", "a sleep-deprived sun", "a biblically accurate Furby", "a horse wearing high heels", "the coolest guy at the Renaissance Fair", "a baguette that is also a sword", "an octopus trying to use a laptop", "a very muscular strawberry", "a ghost trying to use a touchscreen", "a mailbox that eats hands", "a fashionable swamp monster", "a dog that is definitely three kids in a trench coat", "a birthday cake for someone you hate", "a rock star who is literally a rock", "the inside of a black hole’s junk drawer", "a squirrel planning a heist", "a toaster that only burns 'Help' into bread", "a yoga pose that is physically impossible", "a gnome who has seen too much", "a refrigerator that is secretly a portal", "a very polite spider", "a sneaker made of actual meat", "the world’s worst superhero", "a tea party for feral raccoons", "a baby with a full beard", "a mountain with a giant zipper", "a jazz-playing shrimp", "a pizza with illegal toppings", "a cat that is clearly a wizard", "a snowman in a tanning bed", "a hot dog that is a legal witness", "a tree growing money but it is all pennies", "a UFO that looks like a kitchen appliance", "a butterfly with human ears", "a cowboy who is also a centaur", "a skeleton at a spa", "a pineapple that is also a grenade", "a very aggressive dandelion", "a sofa that wants to eat you", "a mime fighting an invisible bear", "a gargoyle with a selfie stick", "a penguin at a tropical resort", "a banana peel’s revenge", "a robot trying to understand love", "a burger that is way too tall", "a lemon that just tasted something sour", "a wizard who is bad at magic", "a disco ball made of eyes", "a dragon who hoards used napkins", "a skateboard made of ice", "a shark in a business meeting", "a mailbox full of bees", "a crown made of hot dogs", "a vampire at a garlic festival", "a moon with a do not disturb sign", "a toilet that is also a throne", "a giraffe with a short neck", "a marshmallow getting toasted", "a pair of glasses for a wooden cyclops", "a guitar that is also a chainsaw", "a very fancy potato", "a spider with eight different shoes", "a worm wearing a scarf", "a candle that smells like regret", "a phone that is literally just a brick", "a beehive that is also a condo", "a turtle with a jetpack", "a steak that looks like a celebrity", "a grumpy raincloud", "a blender that is terrified of kale", "a car that runs on vibes", "a pirate who is afraid of water", "a watermelon with teeth", "a clock that tells you when you will die", "a mushroom with a hat", "a sock that lost its twin", "a very judgmental mirror", "a squirrel with a lightsaber", "a taco that is also a wallet", "a tree that grows hands instead of leaves", "a disco ball in a cave", "a ghost eating a slice of pizza", "a robot with a mid-life crisis", "a fish in a birdcage", "a volcano that erupts glitter", "a very buff pigeon", "a snowman at the beach", "a cactus that needs a hug", "a suitcase with legs", "a moon made of cheese", "a very fashionable Bigfoot", "a toaster that is also a camera", "a bird with human arms", "a very angry cupcake", "a snake wearing a sweater", "a bowling ball with a face", "a very fancy dumpster", "a lighthouse that is also a giant candle", "a teapot that is also a house", "a very cool worm", "a cat with a jetpack", "a very tall hat", "a dog in a space suit", "a very angry cloud", "a pizza with eyes", "a very fancy rat", "a ghost in a bikini", "a robot with a hat", "a very buff cat", "a fish with a hat", "a very fancy frog", "a ghost with a hat", "a robot with a dog", "a very angry sun", "a pizza with a hat", "a very fancy bird", "a ghost with a dog", "a robot with a cat", "a very angry moon", "a pizza with a cat", "a very fancy fish", "a ghost with a cat", "a robot with a hat", "a very angry star", "a pizza with a dog", "a very fancy snail", "a ghost with a bird", "a robot with a bird", "a very angry planet", "a pizza with a bird", "a very fancy lizard", "a ghost with a snail", "a robot with a snail", "a very angry comet", "a pizza with a snail", "a very fancy bug", "a ghost with a bug", "a robot with a bug", "a very angry asteroid", "a pizza with a bug", "a bowling ball having a nightmare", "a sentient jar of mayonnaise in a beauty pageant", "a gargoyle trying hide a sneeze", "an avocado with a realistic human eye", "a squirrel wearing tiny denim overalls", "a lawnmower that only eats four-leaf clovers", "a cloud that is actually just a big pile of mashed potatoes", "a skyscraper with a giant belly button", "a pigeon wearing a wire for the FBI", "a spider trying to knit a sweater", "a hot dog in a sleeping bag", "a tree growing human ears instead of leaves", "a toaster that is secretly a DJ", "a haunted box of raisins", "a very muscular goldfish", "a cowboy riding a giant shrimp", "a mime trapped in a real glass box", "a vampire at a blood drive with a coupon", "a pizza with a missing poster for the pepperoni", "a cat in a business suit giving a PowerPoint", "a snowman with a flamethrower", "a lemon with a six-pack", "a mailbox full of spaghetti", "a very polite monster under the bed", "a cactus trying to use a balloon animal", "a banana wearing a leather jacket", "a ghost trying to wear a backpack", "a robot trying to eat a salad", "a squirrel with a tiny megaphone", "a very fancy brick", "a dragon with a collection of rubber ducks", "a shark wearing a life vest", "a pineapple with a mohawk", "a very angry loaf of bread", "a turtle with a speed limit sign", "a ghost in a tuxedo", "a robot with a mid-life crisis and a sports car", "a fish with a snorkel", "a very buff butterfly", "a tree with a giant zipper", "a disco ball in a dumpster", "a very fancy rat in a tiny bathtub", "a snowman at a BBQ", "a cactus in a knitted sweater", "a suitcase with human legs and high heels", "a moon with a giant Band-Aid", "a very fashionable Bigfoot at brunch", "a toaster that only pops up live birds", "a bird with human hands for wings", "a very angry cupcake with a knife", "snake wearing a scarf and a monocle", "a bowling ball with a toupee", "a very fancy dumpster fire", "a lighthouse that is a giant flashlight", "a teapot that is a time machine", "a very cool worm with sunglasses and a skateboard", "a cat with a jetpack and a laser pointer", "a very tall hat with a smaller hat on top", "a dog in a space suit chasing a bone satellite", "a very angry cloud with lightning teeth", "a pizza with a face made of toppings", "a very fancy rat eating a tiny cheese plate", "a ghost in a polka dot bikini", "a robot with a cowboy hat and a lasso", "a very buff cat lifting a giant yarn ball", "a fish with a top hat and a cane", "a very fancy frog on a lily pad throne", "a ghost with a tiny pet ghost dog", "a robot with a mechanical cat", "a very angry sun with sunglasses", "a pizza with a tiny chef hat", "a very fancy bird with a pearl necklace", "a ghost with a suitcase and a map", "a robot with a tiny robot child", "a very angry moon with a nightcap", "a pizza with a cat face", "a very fancy fish in a tuxedo", "a ghost with an umbrella in the rain", "a robot with a birthday cake", "a very angry star with a frown", "a pizza with a dog face", "a very fancy snail with a glitter shell", "a ghost with a bird on its shoulder", "a robot with a pet bird", "a very angry planet with rings", "a pizza with a bird face", "a very fancy lizard in a suit", "a ghost with a pet snail", "a robot with a pet snail", "a very angry comet with a tail", "a pizza with a snail face", "a very fancy bug with a top hat", "a ghost with a pet bug", "a robot with a pet bug", "a very angry asteroid with eyes", "a pizza with a bug face", "a sentient cloud of bees holding a balloon", "a refrigerator running away from a kitchen", "a skeleton playing a ribcage like a xylophone", "a very fancy rock with a mustache"];
+const PROMPTS = [
+  "Dani’s worst fear",
+  "How Dani wakes up next to Kevin",
+  "Dani’s dream vacation",
+  "Dani’s biggest regret",
+  "What Dani does when we’re asleep",
+  "Favorite Dani memory",
+  "The hibachi chef",
+  "The worm",
+  "The boat trip",
+  "Dani on Mount Rushmore",
+  "Dani as a baby",
+  "Dani kissing Kevin",
+  "Dani and Kevin’s first child",
+  "Kevin's bachelor party",
+  "Dani if she was one of Kevin’s cars",
+  "Kevin",
+  "The moment she says I do",
+  "The balloon arch",
+  "The sake shots",
+  "Where the steak went",
+  "Dani at work",
+  "President Dani"
+];
 
 const generateRoomCode = () => Math.random().toString(36).substring(2, 6).toUpperCase();
 
@@ -153,6 +176,14 @@ const COLORS = {
 
 const COMMON_BTN = `relative border-4 border-black font-bold uppercase tracking-widest active:translate-y-1 active:shadow-none transition-all ${COLORS.buttonShadow}`;
 
+// A player's readiness belongs to a specific phase. The legacy `ready` flag is
+// retained for backwards compatibility with rooms that were already in progress.
+const isPlayerReadyForPhase = (player, phase) => {
+  if (!player) return false;
+  if (player.readyForPhase) return player.readyForPhase === phase;
+  return player.ready === true;
+};
+
 // --- Components ---
 
 const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
@@ -162,7 +193,15 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
   const [color, setColor] = useState('#1A1A1A');
   const [thickness, setThickness] = useState(8);
   const [timeLeft, setTimeLeft] = useState(timeLimit);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const contextRef = useRef(null);
+  const saveInFlightRef = useRef(false);
+  const onSaveRef = useRef(onSave);
+
+  useEffect(() => {
+    onSaveRef.current = onSave;
+  }, [onSave]);
 
   const initCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -224,25 +263,37 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
     };
   }, [initCanvas]);
 
+  const handleSave = useCallback(async () => {
+    if (!canvasRef.current || saveInFlightRef.current) return;
+
+    saveInFlightRef.current = true;
+    setIsSaving(true);
+    setSaveError('');
+
+    try {
+      const dataUrl = canvasRef.current.toDataURL('image/png', 0.5);
+      await onSaveRef.current(dataUrl);
+    } catch (error) {
+      console.error('Drawing save failed:', error);
+      saveInFlightRef.current = false;
+      setIsSaving(false);
+      setSaveError('Could not save. Tap DONE to try again.');
+    }
+  }, []);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          handleSave();
           clearInterval(timer);
+          void handleSave();
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
-
-  const handleSave = () => {
-    if (!canvasRef.current) return;
-    const dataUrl = canvasRef.current.toDataURL('image/png', 0.5);
-    onSave(dataUrl);
-  };
+  }, [handleSave]);
 
   const getPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
@@ -329,7 +380,8 @@ const DrawingCanvas = ({ onSave, prompt, timeLimit }) => {
           </button>
         </div>
 
-        <button onClick={handleSave} className={`w-full py-4 bg-[#2E5CAF] text-white text-xl ${COMMON_BTN}`}>DONE</button>
+        {saveError && <p className="text-center text-xs font-black uppercase text-[#E94E34]">{saveError}</p>}
+        <button disabled={isSaving} onClick={() => void handleSave()} className={`w-full py-4 bg-[#2E5CAF] text-white text-xl disabled:opacity-60 ${COMMON_BTN}`}>{isSaving ? 'SAVING...' : 'DONE'}</button>
       </div>
     </div>
   );
@@ -496,17 +548,27 @@ export default function App() {
   const [roomId, setRoomId] = useState('');
   const [name, setName] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
-  const [voted, setVoted] = useState(false);
   const [curationOrder, setCurationOrder] = useState([]);
-  const [submittedCuration, setSubmittedCuration] = useState(false);
   const [isBidding, setIsBidding] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
+  const [phaseCheckTick, setPhaseCheckTick] = useState(0);
+  const [isSubmittingCuration, setIsSubmittingCuration] = useState(false);
+  const [isSubmittingVote, setIsSubmittingVote] = useState(false);
 
-  // Audio Refs
+  // Audio / synchronization refs
   const introAudioRef = useRef(null);
   const auctionAudioRef = useRef(null);
+  const phaseAdvanceLockRef = useRef(false);
+  const auctionActionLockRef = useRef(false);
+  const autoVoteReadyRef = useRef(false);
+  const appraisalAutoReadyKeyRef = useRef('');
 
   const me = useMemo(() => players.find(p => p.id === user?.uid), [players, user?.uid]);
+  const curatedPlayers = useMemo(() => players.filter(p => p.wingTitle), [players]);
+  const curationSubmitted = room?.phase === PHASES.CURATION && isPlayerReadyForPhase(me, PHASES.CURATION) && !!me?.wingTitle;
+  const hasVoted = room?.phase === PHASES.VOTING && isPlayerReadyForPhase(me, PHASES.VOTING);
+  const readyGatedPhase = [PHASES.STUDIO_DRAW, PHASES.STUDIO_APPRAISE, PHASES.CURATION, PHASES.VOTING].includes(room?.phase);
+  const allPlayersReadyForCurrentPhase = readyGatedPhase && players.length > 0 && players.every(p => isPlayerReadyForPhase(p, room?.phase));
 
   useEffect(() => {
     setIsConnecting(true);
@@ -551,22 +613,94 @@ export default function App() {
     }
   }, [room?.phase, view]);
 
-  // Client Auto-Ready Logic for Voting
+  // Reset one-shot locks when a new phase begins.
   useEffect(() => {
-    if (view === 'client' && room?.phase === PHASES.VOTING && !voted && user) {
-      const candidates = players.filter(p => p.id !== user.uid && p.wingTitle);
-      if (candidates.length === 0) {
-        setVoted(true);
-        updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true });
+    phaseAdvanceLockRef.current = false;
+    auctionActionLockRef.current = false;
+    autoVoteReadyRef.current = false;
+    appraisalAutoReadyKeyRef.current = '';
+    setIsSubmittingCuration(false);
+    setIsSubmittingVote(false);
+    setStatusMsg('');
+  }, [room?.phaseStartedAt]);
+
+  // Starting or clearing a lot is the acknowledgement for the previous auction
+  // action, so the next timer/finalize action may proceed exactly once.
+  useEffect(() => {
+    auctionActionLockRef.current = false;
+  }, [room?.phase, room?.currentAuction?.itemId]);
+
+  // The old host logic checked Date.now() once, but React had no reason to re-run
+  // exactly when the one-second safety window expired. This guarantees one recheck.
+  useEffect(() => {
+    if (view !== 'host' || !room?.phaseStartedAt) return;
+    const elapsed = Date.now() - room.phaseStartedAt;
+    if (elapsed >= 1100) return;
+
+    const timer = setTimeout(() => {
+      setPhaseCheckTick(tick => tick + 1);
+    }, Math.max(0, 1100 - elapsed));
+
+    return () => clearTimeout(timer);
+  }, [view, room?.phaseStartedAt]);
+
+  // If a player legitimately has no appraisal assigned, do not leave them on a
+  // blank screen forever. Query Firestore directly so this decision never uses a
+  // stale React items snapshot.
+  useEffect(() => {
+    if (view !== 'client' || room?.phase !== PHASES.STUDIO_APPRAISE || !room?.appraisalsDistributedAt || !user || !me) return;
+    if (isPlayerReadyForPhase(me, PHASES.STUDIO_APPRAISE)) return;
+
+    const key = `${roomId}:${room.appraisalsDistributedAt}:${user.uid}`;
+    if (appraisalAutoReadyKeyRef.current === key) return;
+    appraisalAutoReadyKeyRef.current = key;
+
+    const timer = setTimeout(async () => {
+      try {
+        const itemSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items'));
+        const remaining = itemSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(i => i.appraiserId === user.uid && !i.appraised);
+
+        if (remaining.length === 0) {
+          await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), {
+            ready: true,
+            readyForPhase: PHASES.STUDIO_APPRAISE
+          });
+        }
+      } catch (error) {
+        console.error('Appraisal readiness check failed:', error);
+        appraisalAutoReadyKeyRef.current = '';
       }
-    }
-  }, [room?.phase, players, voted, user, roomId, view]);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [view, room?.phase, room?.appraisalsDistributedAt, roomId, user, me]);
+
+  // A player with nobody eligible to vote for should still count as finished.
+  useEffect(() => {
+    if (view !== 'client' || room?.phase !== PHASES.VOTING || !user || !me || hasVoted) return;
+    const candidates = players.filter(p => p.id !== user.uid && p.wingTitle);
+    if (candidates.length !== 0 || autoVoteReadyRef.current) return;
+
+    autoVoteReadyRef.current = true;
+    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), {
+      ready: true,
+      readyForPhase: PHASES.VOTING,
+      votedFor: '__NO_CANDIDATE__'
+    }).catch(error => {
+      console.error('Auto-ready for voting failed:', error);
+      autoVoteReadyRef.current = false;
+    });
+  }, [view, room?.phase, players, hasVoted, user, me, roomId]);
 
   useEffect(() => {
-    if (room?.phase === PHASES.VOTING) {
-      setVoted(false);
-    }
-  }, [room?.phase]);
+    if (curationSubmitted) setIsSubmittingCuration(false);
+  }, [curationSubmitted]);
+
+  useEffect(() => {
+    if (hasVoted) setIsSubmittingVote(false);
+  }, [hasVoted]);
 
   // Host logic
   useEffect(() => {
@@ -576,77 +710,127 @@ export default function App() {
     const phaseUptime = Date.now() - (room.phaseStartedAt || 0);
     const isSettled = phaseUptime > 1000;
 
-    if (isSettled && players.length > 0 && players.every(p => p.ready)) {
-      if (room.phase === PHASES.STUDIO_DRAW) distributeAppraisals();
-      else if (room.phase === PHASES.STUDIO_APPRAISE) startPhase(PHASES.AUCTION);
-      else if (room.phase === PHASES.CURATION) startPhase(PHASES.PRESENTATION);
-      else if (room.phase === PHASES.PRESENTATION) startPhase(PHASES.VOTING);
-      else if (room.phase === PHASES.VOTING) startPhase(PHASES.RESULTS);
+    if (isSettled && allPlayersReadyForCurrentPhase && !phaseAdvanceLockRef.current) {
+      phaseAdvanceLockRef.current = true;
+
+      const advance = async () => {
+        try {
+          if (room.phase === PHASES.STUDIO_DRAW) await distributeAppraisals();
+          else if (room.phase === PHASES.STUDIO_APPRAISE) await startPhase(PHASES.AUCTION);
+          else if (room.phase === PHASES.CURATION) await startPhase(PHASES.PRESENTATION);
+          else if (room.phase === PHASES.VOTING) await startPhase(PHASES.RESULTS);
+        } catch (error) {
+          console.error('Automatic phase advance failed:', error);
+          phaseAdvanceLockRef.current = false;
+        }
+      };
+
+      void advance();
       return;
     }
 
     if (room.phase === PHASES.PRESENTATION) {
-      timer = setInterval(async () => {
+      timer = setInterval(() => {
         const currentIdx = room.presentingIdx || 0;
-        if (room.presentationTimer > 0) {
-          updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentationTimer: room.presentationTimer - 1 });
-        } else {
-          if (currentIdx < players.length - 1) {
-            updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), { presentingIdx: currentIdx + 1, presentationTimer: 12 });
-          } else { 
-            startPhase(PHASES.VOTING); 
+        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+
+        if (curatedPlayers.length === 0) {
+          if (!phaseAdvanceLockRef.current) {
+            phaseAdvanceLockRef.current = true;
+            startPhase(PHASES.VOTING).catch(error => {
+              console.error('Presentation advance failed:', error);
+              phaseAdvanceLockRef.current = false;
+            });
           }
+          return;
+        }
+
+        if ((room.presentationTimer || 0) > 0) {
+          updateDoc(roomRef, { presentationTimer: room.presentationTimer - 1 }).catch(error => console.error('Presentation timer failed:', error));
+        } else if (currentIdx < curatedPlayers.length - 1) {
+          updateDoc(roomRef, { presentingIdx: currentIdx + 1, presentationTimer: 12 }).catch(error => console.error('Presentation advance failed:', error));
+        } else if (!phaseAdvanceLockRef.current) {
+          phaseAdvanceLockRef.current = true;
+          startPhase(PHASES.VOTING).catch(error => {
+            console.error('Voting phase start failed:', error);
+            phaseAdvanceLockRef.current = false;
+          });
         }
       }, 1000);
     }
 
     if (room.phase === PHASES.AUCTION) {
       if (!room.currentAuction) {
-        const pool = items.filter(i => i.appraised && !i.auctioned);
-        if (pool.length > 0) {
+        const auctionableItems = items.filter(i => i.appraised);
+        const pool = auctionableItems.filter(i => !i.auctioned && i.id !== room.lastFinalizedAuctionItemId);
+
+        if (pool.length > 0 && !auctionActionLockRef.current) {
+          auctionActionLockRef.current = true;
           const nextItem = pool[Math.floor(Math.random() * pool.length)];
           const appraiser = players.find(p => p.id === nextItem.appraiserId);
-          
+
           updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId), {
+            lastFinalizedAuctionItemId: null,
             currentAuction: {
               itemId: nextItem.id,
               item: nextItem,
-              appraiserName: appraiser ? appraiser.name : "Unknown",
+              appraiserName: appraiser ? appraiser.name : 'Unknown',
               highestBid: 0,
               highestBidder: null,
               highestBidderName: null,
-              timer: 10 
+              timer: 10
             }
+          }).catch(error => {
+            console.error('Starting auction lot failed:', error);
+            auctionActionLockRef.current = false;
           });
-        } else if (items.length > 0 && items.every(i => i.auctioned)) {
-          startPhase(PHASES.CURATION);
+        } else if (auctionableItems.length > 0 && auctionableItems.every(i => i.auctioned) && !phaseAdvanceLockRef.current) {
+          phaseAdvanceLockRef.current = true;
+          startPhase(PHASES.CURATION).catch(error => {
+            console.error('Curation phase start failed:', error);
+            phaseAdvanceLockRef.current = false;
+          });
         }
       } else {
-        timer = setInterval(async () => {
+        timer = setInterval(() => {
           const auction = room.currentAuction;
           const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+
           if (auction.timer <= 0) {
             clearInterval(timer);
-            finalizeAuction();
+            if (!auctionActionLockRef.current) {
+              auctionActionLockRef.current = true;
+              finalizeAuction().catch(error => {
+                console.error('Finalizing auction failed:', error);
+                auctionActionLockRef.current = false;
+              });
+            }
           } else {
-            updateDoc(roomRef, { 'currentAuction.timer': auction.timer - 1 });
+            updateDoc(roomRef, { 'currentAuction.timer': auction.timer - 1 }).catch(error => console.error('Auction timer failed:', error));
           }
         }, 1000);
       }
     }
 
     return () => clearInterval(timer);
-  }, [view, room?.phase, room?.currentAuction, room?.presentingIdx, room?.presentationTimer, players, items, room?.phaseStartedAt]);
+  }, [view, room?.phase, room?.currentAuction, room?.presentingIdx, room?.presentationTimer, room?.lastFinalizedAuctionItemId, players, items, room?.phaseStartedAt, phaseCheckTick, allPlayersReadyForCurrentPhase, curatedPlayers]);
 
   const distributeAppraisals = async () => {
     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
+
+    // A player's final drawing write can reach the host's player listener before
+    // the host's items listener. Fetch the authoritative items before assigning
+    // appraisals so no artwork is accidentally skipped.
+    const latestItemsSnap = await getDocs(collection(roomRef, 'items'));
+    const currentItems = latestItemsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
     const batch = writeBatch(db);
     const sortedPlayers = [...players].sort((a,b) => a.id.localeCompare(b.id));
     const playerIds = sortedPlayers.map(p => p.id);
     const n = playerIds.length;
 
     const itemsByArtist = {};
-    items.forEach(i => {
+    currentItems.forEach(i => {
       if (!itemsByArtist[i.artistId]) itemsByArtist[i.artistId] = [];
       itemsByArtist[i.artistId].push(i.id);
     });
@@ -666,8 +850,9 @@ export default function App() {
       }
     });
 
-    batch.update(roomRef, { phase: PHASES.STUDIO_APPRAISE, phaseStartedAt: Date.now() });
-    players.forEach(p => { batch.update(doc(roomRef, 'players', p.id), { ready: false }); });
+    const now = Date.now();
+    batch.update(roomRef, { phase: PHASES.STUDIO_APPRAISE, phaseStartedAt: now, appraisalsDistributedAt: now });
+    players.forEach(p => { batch.update(doc(roomRef, 'players', p.id), { ready: false, readyForPhase: null }); });
     await batch.commit();
   };
 
@@ -721,14 +906,18 @@ export default function App() {
       const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', finalOwnerId);
       await updateDoc(pRef, { inventory: arrayUnion(auction.itemId) });
     }
-    await updateDoc(roomRef, { currentAuction: null });
+    await updateDoc(roomRef, { currentAuction: null, lastFinalizedAuctionItemId: auction.itemId });
   };
 
 const startPhase = async (phase) => {
     const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId);
     const batch = writeBatch(db);
     batch.update(roomRef, { phase, phaseStartedAt: Date.now(), presentingIdx: 0, presentationTimer: 12 });
-    players.forEach(p => { batch.update(doc(roomRef, 'players', p.id), { ready: false }); });
+    players.forEach(p => {
+      const reset = { ready: false, readyForPhase: null };
+      if (phase === PHASES.VOTING) reset.votedFor = null;
+      batch.update(doc(roomRef, 'players', p.id), reset);
+    });
     await batch.commit();
 
     // Send data to Google Analytics
@@ -737,6 +926,31 @@ const startPhase = async (phase) => {
       if (phase === PHASES.RULES_MODAL) {
         logEvent(window.analytics, 'game_started', { player_count: players.length });
       }
+    }
+  };
+
+  const markPlayerReady = async (phase, extra = {}) => {
+    if (!user || !roomId) return;
+    await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), {
+      ...extra,
+      ready: true,
+      readyForPhase: phase
+    });
+  };
+
+  const forceAdvanceCurrentPhase = async () => {
+    if (!room || phaseAdvanceLockRef.current) return;
+    phaseAdvanceLockRef.current = true;
+
+    try {
+      if (room.phase === PHASES.STUDIO_DRAW) await distributeAppraisals();
+      else if (room.phase === PHASES.STUDIO_APPRAISE) await startPhase(PHASES.AUCTION);
+      else if (room.phase === PHASES.CURATION) await startPhase(PHASES.PRESENTATION);
+      else if (room.phase === PHASES.VOTING) await startPhase(PHASES.RESULTS);
+      else phaseAdvanceLockRef.current = false;
+    } catch (error) {
+      console.error('Host override failed:', error);
+      phaseAdvanceLockRef.current = false;
     }
   };
 
@@ -766,7 +980,13 @@ const startPhase = async (phase) => {
     const code = generateRoomCode();
     const commonPrompts = [...PROMPTS].sort(() => 0.5 - Math.random()).slice(0, 3);
     await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code), {
-      hostId: user.uid, phase: PHASES.LOBBY, currentAuction: null, phaseStartedAt: Date.now(), gamePrompts: commonPrompts
+      hostId: user.uid,
+      phase: PHASES.LOBBY,
+      currentAuction: null,
+      lastFinalizedAuctionItemId: null,
+      appraisalsDistributedAt: null,
+      phaseStartedAt: Date.now(),
+      gamePrompts: commonPrompts
     });
     setRoomId(code); setView('host');
   };
@@ -795,7 +1015,9 @@ const joinGame = async (code) => {
         cash: 1000, 
         pendingEarnings: 0,
         inventory: [], 
-        ready: false, 
+        ready: false,
+        readyForPhase: null,
+        votedFor: null,
         votes: 0, 
         wingTitle: '' 
       });
@@ -814,16 +1036,14 @@ const joinGame = async (code) => {
     const commonPrompts = [...PROMPTS].sort(() => 0.5 - Math.random()).slice(0, 3);
     batch.update(roomRef, {
       phase: PHASES.STUDIO_DRAW, phaseStartedAt: Date.now(),
-      gamePrompts: commonPrompts, currentAuction: null
+      gamePrompts: commonPrompts, currentAuction: null, lastFinalizedAuctionItemId: null, appraisalsDistributedAt: null
     });
     players.forEach(p => {
       const pRef = doc(roomRef, 'players', p.id);
-      batch.update(pRef, { cash: 1000, pendingEarnings: 0, inventory: [], ready: false, votes: 0, wingTitle: '' });
+      batch.update(pRef, { cash: 1000, pendingEarnings: 0, inventory: [], ready: false, readyForPhase: null, votedFor: null, votes: 0, wingTitle: '' });
     });
     await batch.commit();
-    setSubmittedCuration(false);
     setCurationOrder([]);
-    setVoted(false);
   };
 
 const handleDrawingSubmit = async (dataUrl) => {
@@ -837,15 +1057,76 @@ const handleDrawingSubmit = async (dataUrl) => {
       createdAt: Date.now() // <-- THIS SAVES THE DATE!
     });
     if (itemCount >= 2) {
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true });
+      await markPlayerReady(PHASES.STUDIO_DRAW);
     }
   };
 
   const submitAppraisal = async (itemId, title, history) => {
+    setStatusMsg('');
     await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items', itemId), { title, history, appraised: true });
-    const remaining = items.filter(i => i.appraiserId === user.uid && !i.appraised && i.id !== itemId);
+
+    // Read the authoritative collection after the write instead of trusting the
+    // possibly-stale React `items` array.
+    const latestItems = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'items'));
+    const remaining = latestItems.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(i => i.appraiserId === user.uid && !i.appraised);
+
     if (remaining.length === 0) {
-      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true });
+      await markPlayerReady(PHASES.STUDIO_APPRAISE);
+    }
+  };
+
+  const submitCuration = async () => {
+    if (!user || isSubmittingCuration || curationSubmitted) return;
+    const titleInput = document.getElementById('w-title');
+    const title = titleInput ? titleInput.value : 'Exhibition';
+    const finalOrder = curationOrder.length > 0 ? curationOrder : (me?.inventory || []);
+
+    setIsSubmittingCuration(true);
+    setStatusMsg('');
+    try {
+      await markPlayerReady(PHASES.CURATION, {
+        wingTitle: title || 'Exhibition',
+        inventory: finalOrder
+      });
+    } catch (error) {
+      console.error('Curation submission failed:', error);
+      setStatusMsg('Could not publish your gallery. Please try again.');
+      setIsSubmittingCuration(false);
+    }
+  };
+
+  const submitVote = async (targetPlayerId) => {
+    if (!user || isSubmittingVote || hasVoted || targetPlayerId === user.uid) return;
+
+    setIsSubmittingVote(true);
+    setStatusMsg('');
+    if (navigator.vibrate) navigator.vibrate(100);
+
+    try {
+      const voterRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid);
+      const targetRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', targetPlayerId);
+
+      await runTransaction(db, async (transaction) => {
+        const voterSnap = await transaction.get(voterRef);
+        const targetSnap = await transaction.get(targetRef);
+
+        if (!voterSnap.exists() || !targetSnap.exists()) throw new Error('Player no longer exists');
+        const voterData = voterSnap.data();
+        if (voterData.votedFor || voterData.readyForPhase === PHASES.VOTING) return;
+
+        transaction.update(targetRef, { votes: (targetSnap.data().votes || 0) + 1 });
+        transaction.update(voterRef, {
+          votedFor: targetPlayerId,
+          ready: true,
+          readyForPhase: PHASES.VOTING
+        });
+      });
+    } catch (error) {
+      console.error('Vote submission failed:', error);
+      setStatusMsg('Your vote did not save. Please try again.');
+      setIsSubmittingVote(false);
     }
   };
 
@@ -890,7 +1171,8 @@ if (view === 'admin') {
             <div className="absolute -bottom-6 -right-6 w-12 h-12 bg-[#E94E34] rounded-full border-4 border-black"></div>
             
             <input type="text" placeholder="YOUR NAME" className="w-full p-4 bg-[#f4f1ea] border-4 border-black text-xl font-black outline-none focus:bg-white uppercase placeholder:text-slate-400" value={name} onChange={e => setName(e.target.value)} />
-            <input type="text" placeholder="ROOM CODE" className="w-full p-4 bg-[#f4f1ea] border-4 border-black text-center font-mono text-2xl tracking-[0.2em] uppercase outline-none focus:bg-white placeholder:text-slate-400" value={roomId} onChange={e => setRoomId(e.target.value)} />
+            <input type="text" placeholder="ROOM CODE" className="w-full p-4 bg-[#f4f1ea] border-4 border-black text-center font-mono text-2xl tracking-[0.2em] uppercase outline-none focus:bg-white placeholder:text-slate-400" value={roomId} onChange={e => { setRoomId(e.target.value); setStatusMsg(''); }} />
+            {statusMsg && <p className="font-black uppercase text-sm text-[#E94E34]">{statusMsg}</p>}
             
             <button onClick={() => joinGame(roomId)} disabled={!name || !roomId} className={`w-full py-4 bg-[#2E5CAF] text-white text-2xl hover:bg-[#1e3a8a] ${COMMON_BTN}`}>ENTER GALLERY</button>
             
@@ -925,6 +1207,16 @@ if (view === 'admin') {
             <p className="text-3xl lg:text-4xl font-black text-[#1A1A1A] tracking-tighter leading-none font-mono">{room?.id}</p>
           </div>
         </div>
+
+        {readyGatedPhase && !allPlayersReadyForCurrentPhase && (
+          <button
+            onClick={() => void forceAdvanceCurrentPhase()}
+            className="absolute bottom-4 left-4 z-50 px-3 py-2 bg-white border-2 border-black text-[10px] font-black uppercase tracking-widest shadow-[3px_3px_0px_0px_rgba(26,26,26,1)] hover:bg-[#F4D03F]"
+            title="Emergency host control if a player disconnects or cannot finish"
+          >
+            Host Override: Continue
+          </button>
+        )}
 
         <div className="flex-1 min-h-0 w-full flex items-center justify-center relative">
           {/* Background shapes */}
@@ -1022,15 +1314,15 @@ if (view === 'admin') {
 
           {room?.phase === PHASES.PRESENTATION && (
             <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-center animate-in zoom-in duration-500 relative pb-2">
-              {players[room.presentingIdx] && (
+              {curatedPlayers[room.presentingIdx] && (
                 <>
                   <div className="text-center mb-4 shrink-0 z-10">
-                    <div className="inline-block px-6 py-1 bg-[#1A1A1A] text-white font-black text-lg uppercase tracking-widest border-4 border-white shadow-xl mb-1 -rotate-2">Curated By: {players[room.presentingIdx].name}</div>
-                    <h2 className="text-5xl font-black text-[#1A1A1A] uppercase leading-none tracking-tighter">"{players[room.presentingIdx].wingTitle}"</h2>
+                    <div className="inline-block px-6 py-1 bg-[#1A1A1A] text-white font-black text-lg uppercase tracking-widest border-4 border-white shadow-xl mb-1 -rotate-2">Curated By: {curatedPlayers[room.presentingIdx].name}</div>
+                    <h2 className="text-5xl font-black text-[#1A1A1A] uppercase leading-none tracking-tighter">"{curatedPlayers[room.presentingIdx].wingTitle}"</h2>
                   </div>
                   
                   <div className="flex-1 min-h-0 flex w-full gap-4 lg:gap-8 justify-center items-center px-4 max-w-[95vw] z-10 pb-4">
-                    {players[room.presentingIdx].inventory.map((itemId, idx) => {
+                    {curatedPlayers[room.presentingIdx].inventory.map((itemId, idx) => {
                        const item = items.find(i => i.id === itemId);
                        if (!item) return null;
                        return (
@@ -1160,6 +1452,9 @@ if (view === 'admin') {
       )}
 
       <main className="flex-1 overflow-y-auto pb-24 relative z-10">
+        {statusMsg && room && (
+          <div className="m-3 p-3 bg-white border-4 border-[#E94E34] text-[#E94E34] text-xs font-black uppercase text-center">{statusMsg}</div>
+        )}
         {!room ? (
           <div className="p-16 text-center font-black uppercase tracking-widest animate-pulse">Connecting...</div>
         ) : room.phase === PHASES.LOBBY ? (
@@ -1257,7 +1552,7 @@ if (view === 'admin') {
           </div>
         ) : room.phase === PHASES.CURATION ? (
           <div className="p-6 space-y-6 animate-in slide-in-from-right shrink-0">
-            {!submittedCuration ? (
+            {!curationSubmitted ? (
               <>
                 <div className="bg-[#E94E34] text-white p-6 border-4 border-black shadow-[4px_4px_0px_0px_black] shrink-0">
                     <h2 className="text-3xl font-black leading-none italic uppercase tracking-tighter">Curate Wing</h2>
@@ -1284,7 +1579,7 @@ if (view === 'admin') {
                       })}
                     </div>
                   </div>
-                  <button onClick={() => { const titleInput = document.getElementById('w-title'); const title = titleInput ? titleInput.value : "Exhibition"; const finalOrder = curationOrder.length > 0 ? curationOrder : (me?.inventory || []); updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { wingTitle: title || "Exhibition", inventory: finalOrder, ready: true }); setSubmittedCuration(true); }} className={`w-full py-6 bg-[#1A1A1A] text-white text-2xl active:translate-y-1 active:shadow-none transition-all ${COLORS.buttonShadow}`}>OPEN GALLERY</button>
+                  <button disabled={isSubmittingCuration} onClick={() => void submitCuration()} className={`w-full py-6 bg-[#1A1A1A] text-white text-2xl disabled:opacity-60 active:translate-y-1 active:shadow-none transition-all ${COLORS.buttonShadow}`}>{isSubmittingCuration ? 'PUBLISHING...' : 'OPEN GALLERY'}</button>
                 </div>
               </>
             ) : (
@@ -1301,7 +1596,7 @@ if (view === 'admin') {
              <h3 className="text-3xl font-black text-black uppercase italic leading-tight">Exhibition Live</h3>
              <p className="font-bold uppercase tracking-widest text-xs bg-white border-2 border-black px-4 py-2">Look at the big screen</p>
           </div>
-) : room.phase === PHASES.VOTING && !voted ? (
+) : room.phase === PHASES.VOTING && !hasVoted ? (
           <div className="p-6 space-y-6 animate-in slide-in-from-bottom shrink-0">
             <div className="text-center space-y-2">
                 <h2 className="text-5xl font-black uppercase italic tracking-tighter leading-none">Vote</h2>
@@ -1309,7 +1604,7 @@ if (view === 'admin') {
             </div>
             <div className="space-y-4">
               {players.filter(p => p.id !== user.uid && p.wingTitle).map(p => (
-                <button key={p.id} onClick={async () => { if (navigator.vibrate) navigator.vibrate(100); const pRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', p.id); const snap = await getDoc(pRef); await updateDoc(pRef, { votes: (snap.data().votes || 0) + 1 }); setVoted(true); updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', roomId, 'players', user.uid), { ready: true }); }} className={`w-full bg-white p-4 border-4 border-black text-left flex items-center gap-4 active:translate-y-1 active:shadow-none transition-all ${COLORS.buttonShadow}`}>
+                <button key={p.id} disabled={isSubmittingVote} onClick={() => void submitVote(p.id)} className={`w-full bg-white p-4 border-4 border-black text-left flex items-center gap-4 disabled:opacity-60 active:translate-y-1 active:shadow-none transition-all ${COLORS.buttonShadow}`}>
                     <div className="w-16 h-16 bg-white border-2 border-black p-1 overflow-hidden shrink-0">
                         <img src={items.find(i => (p.inventory || []).includes(i.id))?.image} className="w-full h-full object-contain" />
                     </div>
@@ -1321,7 +1616,7 @@ if (view === 'admin') {
               ))}
             </div>
           </div>
-        ) : room.phase === PHASES.VOTING && voted ? (
+        ) : room.phase === PHASES.VOTING && hasVoted ? (
           <div className="p-16 text-center space-y-10 flex flex-col items-center justify-center min-h-[70vh] animate-in fade-in shrink-0">
               <div className="relative"><CheckSquare size={140} className="text-[#1A1A1A]" /><div className="absolute -bottom-2 -right-2 bg-[#F4D03F] text-black w-12 h-12 flex items-center justify-center font-black border-4 border-black text-2xl">✓</div></div>
               <div className="space-y-4">
